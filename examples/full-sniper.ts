@@ -244,6 +244,11 @@ async function handleStream(client: Client, args: any) {
       const meta = txInfo.meta ?? data.transaction.meta;
       if (!meta) return;
       
+      // Extract creator from transaction (first account = signer)
+      const accountKeys = txInfo.message?.accountKeys;
+      if (!accountKeys || accountKeys.length === 0) return;
+      const creator = String(accountKeys[0]);
+      
       // Extract new tokens
       const postBalances = meta.postTokenBalances || [];
       const preBalances = meta.preTokenBalances || [];

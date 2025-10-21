@@ -64,10 +64,7 @@ class PnLMonitor {
   private consecutiveLosses = 0;
 
   constructor() {
-    this.connection = new Connection(config.rpc.primary_url, {
-      commitment: "confirmed",
-      wsEndpoint: config.rpc.websocket_url,
-    });
+    this.connection = new Connection(config.rpc.primary_url, "confirmed");
   }
 
   async start() {
