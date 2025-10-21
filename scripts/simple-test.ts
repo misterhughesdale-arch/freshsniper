@@ -336,15 +336,7 @@ async function handleStream(client: Client) {
       const meta = dataTx?.meta;
       if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
 
-      // Check for NEW tokens only (not in preTokenBalances)
-      const postBalances = meta.postTokenBalances || [];
-      const preBalances = meta.preTokenBalances || [];
-      const preMints = new Set(preBalances.map((b: any) => b.mint).filter(Boolean));
-      
-      const newTokens = postBalances.filter((b: any) => b.mint && !preMints.has(b.mint));
-      if (newTokens.length === 0) return; // Not a CREATE transaction
-
-      const mint = newTokens[0].mint;
+      const mint = meta.postTokenBalances[0].mint;
       if (!mint) return;
       
       // Get creator from first account key
@@ -355,8 +347,6 @@ async function handleStream(client: Client) {
       const bs58 = await import("bs58");
       const creatorBytes = accountKeys[0];
       const creator = bs58.default.encode(Buffer.from(creatorBytes));
-
-      console.log(`\n🆕 NEWLY MINTED\n   CA: ${mint}\n   Creator: ${creator.slice(0, 8)}...`);
       
       // Process token
       buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
