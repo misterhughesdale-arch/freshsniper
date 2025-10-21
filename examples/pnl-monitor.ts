@@ -10,7 +10,7 @@
 import "dotenv/config";
 import { Connection, Keypair, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { readFileSync, writeFileSync, existsSync } from "fs";
-import { loadConfig } from "../../../packages/config/src/index";
+import { loadConfig } from "../packages/config/src/index";
 
 const config = loadConfig();
 const TRADER_KEYPAIR_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
