@@ -11,8 +11,6 @@
   },
   "dependencies": {
     "@fresh-sniper/config": "workspace:*",
-    "@fresh-sniper/logging": "workspace:*",
-    "@fresh-sniper/metrics": "workspace:*",
     "@triton-one/yellowstone-grpc": "^0.4.0"
   },
   "devDependencies": {
