@@ -75,8 +75,6 @@ async function main() {
         priorityFeeLamports: 10000000, // 0.01 SOL priority (high)
       });
 
-      // Sign and send
-      transaction.sign(trader);
       // Sign and send (no simulation for speed)
       transaction.sign(trader);
       const signature = await sendViaJito(transaction.serialize());
