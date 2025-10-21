@@ -16,7 +16,7 @@ import { Connection, Keypair, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.j
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { readFileSync } from "fs";
 import { loadConfig } from "../../../packages/config/src/index";
-import { buildSellTransaction } from "../../../packages/transactions/src/pumpfun/builders";
+import { buildSellTransaction } from "packages/transactions/src/pumpfun/builders";
 
 const PUMPFUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
 

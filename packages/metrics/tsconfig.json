@@ -1,8 +1,0 @@
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "../../dist/packages/metrics"
-  },
-  "include": ["src", "../../types/**/*.d.ts"],
-  "references": []
-}
