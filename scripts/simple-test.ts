@@ -51,7 +51,7 @@ function getRandomJitoTipAccount(): PublicKey {
   return new PublicKey(JITO_TIP_ACCOUNTS[Math.floor(Math.random() * JITO_TIP_ACCOUNTS.length)]);
 }
 
-const JITO_TIP_LAMPORTS = 10000; // 10k lamports tip
+const JITO_TIP_LAMPORTS = 50000; // 10k lamports tip
 
 const GRPC_URL = process.env.GRPC_URL!;
 const X_TOKEN = process.env.X_TOKEN!;
@@ -61,18 +61,18 @@ const TRADER_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
 
 const keypairData = JSON.parse(readFileSync(TRADER_PATH, "utf-8"));
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
-const connection = new Connection(RPC_URL, "confirmed");
+const connection = new Connection(RPC_URL, "processed");
 
 // Config
 const TEST_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 const BUY_AMOUNT = 0.01; // SOL
 const BUY_PRIORITY_FEE = 33333; // microlamports per unit = ~10k lamports total
-const SELL_DELAY_MS = 3000; // 3 seconds
+const SELL_DELAY_MS = 10000; // 3 seconds
 const SELL_PRIORITY_FEE = 100; // minimal
 const MIN_BALANCE_SOL = 0.03;
-const BUY_COOLDOWN_MS = 20000; // 20 seconds between buys
+const BUY_COOLDOWN_MS = 10000; // 20 seconds between buys
 const RECLAIM_EVERY_N_BUYS = 2; // Reclaim ATA rent every 2 buys
-const MAX_TOKEN_AGE_MS = 500; // Only buy tokens younger than 500ms
+const MAX_TOKEN_AGE_MS = 100; // Only buy tokens younger than 500ms
 
 const startTime = Date.now();
 const pendingSells: Array<{ mint: PublicKey; creator: PublicKey; buyTime: number; buyTx: string }> = [];
@@ -393,6 +393,12 @@ async function handleStream(client: Client) {
     try {
       const dataTx = data.transaction.transaction;
       const meta = dataTx?.meta;
+      
+      // Debug: Log why we're skipping
+      if (eventsReceived % 50 === 0) {
+        console.log(`   Debug: meta=${!!meta}, postBal=${meta?.postTokenBalances?.length || 0}`);
+      }
+      
       if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
 
       const mint = meta.postTokenBalances[0].mint;
