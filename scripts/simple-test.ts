@@ -406,6 +406,12 @@ async function handleStream(client: Client) {
       for (const ix of message.instructions) {
         if (ix.data && ix.data.length >= 8) {
           const disc = Buffer.from(ix.data).slice(0, 8);
+          
+          // Debug: Log first discriminator every 50 events
+          if (eventsReceived % 50 === 0) {
+            console.log(`   🔍 Disc: ${disc.toString('hex')} vs CREATE: ${DISCRIMINATORS.CREATE.toString('hex')}`);
+          }
+          
           if (disc.equals(DISCRIMINATORS.CREATE)) {
             isCreate = true;
             break;
