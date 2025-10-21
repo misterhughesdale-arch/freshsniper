@@ -315,6 +315,7 @@ async function handleStream(client: Client) {
 
   let eventsReceived = 0;
   let tokensFiltered = 0;
+  let createInstructionsFound = 0;
 
   stream.on("error", (error) => {
     console.error("❌ Stream error:", error);
@@ -324,7 +325,7 @@ async function handleStream(client: Client) {
   stream.on("data", async (data) => {
     eventsReceived++;
     if (eventsReceived % 100 === 0) {
-      console.log(`📊 Events: ${eventsReceived}, Detected: ${tokensDetected}`);
+      console.log(`📊 Events: ${eventsReceived}, Creates: ${createInstructionsFound}, Detected: ${tokensDetected}`);
     }
     
     const receivedAt = Date.now();
@@ -353,13 +354,23 @@ async function handleStream(client: Client) {
         const ixData = Buffer.from(ix.data);
         
         if (ixData.slice(0, 8).equals(CREATE_DISCRIMINATOR)) {
+          createInstructionsFound++;
+          
           // Get creator from instruction accounts (index 7 = user/creator)
-          if (!ix.accounts || ix.accounts.length < 8) continue;
+          if (!ix.accounts || ix.accounts.length < 8) {
+            console.log(`   ⚠️  CREATE found but not enough accounts: ${ix.accounts?.length || 0}`);
+            continue;
+          }
+          
           const creatorAccountIndex = ix.accounts[7];
-          if (!message.accountKeys || message.accountKeys.length <= creatorAccountIndex) continue;
+          if (!message.accountKeys || message.accountKeys.length <= creatorAccountIndex) {
+            console.log(`   ⚠️  Creator account index out of bounds: ${creatorAccountIndex} >= ${message.accountKeys?.length || 0}`);
+            continue;
+          }
           
           const creatorBytes = message.accountKeys[creatorAccountIndex];
           creator = bs58.default.encode(Buffer.from(creatorBytes));
+          console.log(`   ✅ CREATE instruction found! Creator: ${creator.slice(0, 8)}...`);
           break;
         }
       }
