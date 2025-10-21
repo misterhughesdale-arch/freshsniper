@@ -432,7 +432,7 @@ async function handleStream(client: Client) {
         vote: false,
         failed: false,
         signature: undefined,
-        accountInclude: [CONFIG.PUMP_TOKEN_PROGRAM], // Use token program for CREATE detection
+        accountInclude: ["6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"], // Main program - gets ALL txs
         accountExclude: [],
         accountRequired: [],
       },
