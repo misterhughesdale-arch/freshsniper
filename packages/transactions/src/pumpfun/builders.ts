@@ -338,12 +338,10 @@ function createSellInstruction(params: {
       { pubkey: sellerTokenAccount, isSigner: false, isWritable: true },
       { pubkey: seller, isSigner: true, isWritable: true },
       { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: creatorVault, isSigner: false, isWritable: true },
+      { pubkey: creatorVault, isSigner: false, isWritable: true }, // Position 9
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // Position 10
       { pubkey: PUMP_EVENT_AUTHORITY, isSigner: false, isWritable: false },
       { pubkey: PUMP_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: globalVolumeAccumulator, isSigner: false, isWritable: true },
-      { pubkey: userVolumeAccumulator, isSigner: false, isWritable: true },
       { pubkey: feeConfig, isSigner: false, isWritable: false },
       { pubkey: PUMP_FEE_PROGRAM, isSigner: false, isWritable: false },
     ],
