@@ -389,8 +389,17 @@ async function handleStream(client: Client) {
     commitment: CommitmentLevel.CONFIRMED,
   };
 
+  console.log("🔄 Subscribing to Pump.fun transactions...");
   await new Promise<void>((resolve, reject) => {
-    stream.write(request, (err: any) => err ? reject(err) : resolve());
+    stream.write(request, (err: any) => {
+      if (err) {
+        console.error("❌ Subscribe failed:", err);
+        reject(err);
+      } else {
+        console.log("✅ Subscribed successfully!");
+        resolve();
+      }
+    });
   });
 
   // Wait for duration
@@ -419,17 +428,21 @@ async function balanceUpdater() {
  * Main
  */
 async function main() {
+  console.log("🔄 Checking balance...");
   // Initial balance check
   const balance = await connection.getBalance(trader.publicKey);
   cachedBalance = balance / 1e9;
   console.log(`Starting balance: ${cachedBalance.toFixed(6)} SOL\n`);
   
+  console.log("🔄 Connecting to Geyser...");
   const client = new Client(GRPC_URL, X_TOKEN, undefined);
 
+  console.log("🔄 Starting background tasks...");
   // Start background tasks
   const balanceTask = balanceUpdater();
   const sellTask = sellProcessor();
 
+  console.log("🔄 Starting stream...");
   // Run stream for 15 minutes
   await handleStream(client);
 
