@@ -7,13 +7,17 @@
  * Implements circuit breaker to pause bot if losing money
  */
 
-import "dotenv/config";
+import { config as dotenvConfig } from "dotenv";
+import { resolve } from "path";
+dotenvConfig({ path: resolve(process.cwd(), "../../.env") });
 import { Connection, Keypair, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { loadConfig } from "../../../packages/config/src/index";
 
-const config = loadConfig();
-const keypairPath = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
+const config = loadConfig({ configDirectory: resolve(process.cwd(), "../../config") });
+const keypairPath = process.env.TRADER_KEYPAIR_PATH
+  ? resolve(process.cwd(), `../../${process.env.TRADER_KEYPAIR_PATH}`)
+  : resolve(process.cwd(), "../../keypairs/trader.json");
 const keypairData = JSON.parse(readFileSync(keypairPath, "utf-8"));
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
 

@@ -8,7 +8,9 @@
  * 2. Timer expires (configurable hold time)
  */
 
-import "dotenv/config";
+import { config as dotenvConfig } from "dotenv";
+import { resolve } from "path";
+dotenvConfig({ path: resolve(process.cwd(), "../../.env") });
 import Client, { CommitmentLevel } from "@triton-one/yellowstone-grpc";
 import { Connection, Keypair, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
@@ -18,8 +20,10 @@ import { buildSellTransaction } from "../../../packages/transactions/src/pumpfun
 
 const PUMPFUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
 
-const config = loadConfig();
-const TRADER_KEYPAIR_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
+const config = loadConfig({ configDirectory: resolve(process.cwd(), "../../config") });
+const TRADER_KEYPAIR_PATH = process.env.TRADER_KEYPAIR_PATH 
+  ? resolve(process.cwd(), `../../${process.env.TRADER_KEYPAIR_PATH}`)
+  : resolve(process.cwd(), "../../keypairs/trader.json");
 const keypairData = JSON.parse(readFileSync(TRADER_KEYPAIR_PATH, "utf-8"));
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
 

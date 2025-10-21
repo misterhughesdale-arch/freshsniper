@@ -1,7 +1,6 @@
 {
   "name": "sell-manager-service",
   "version": "0.1.0",
-  "type": "module",
   "private": true,
   "scripts": {
     "dev": "tsx src/index.ts",
