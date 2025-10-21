@@ -414,6 +414,7 @@ async function handleStream(client: Client) {
           
           if (disc.equals(DISCRIMINATORS.CREATE)) {
             isCreate = true;
+            console.log(`   ✅ CREATE MATCH!`);
             break;
           }
         }
@@ -421,12 +422,20 @@ async function handleStream(client: Client) {
       
       if (!isCreate) return; // SKIP non-CREATE transactions (buys/sells of old tokens)
       
+      console.log(`   📝 Processing CREATE transaction...`);
+      
       // Now we know it's a CREATE, so process it
       const meta = dataTx?.meta;
-      if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
+      if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) {
+        console.log(`   ⚠️  No postTokenBalances in CREATE tx`);
+        return;
+      }
 
       const mint = meta.postTokenBalances[0].mint;
-      if (!mint) return;
+      if (!mint) {
+        console.log(`   ⚠️  No mint in postTokenBalances[0]`);
+        return;
+      }
       
       const accountKeys = message?.accountKeys;
       if (!accountKeys || accountKeys.length === 0) return;
