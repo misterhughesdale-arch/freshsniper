@@ -158,6 +158,7 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
     buyAttempts++;
     lastBuyTime = now;
     
+    const buildStart = Date.now();
     const { transaction } = await buildBuyTransaction({
       connection,
       buyer: trader.publicKey,
@@ -168,9 +169,13 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
       priorityFeeLamports: BUY_PRIORITY_FEE,
       blockhash: cachedBlockhash || undefined, // Use blockhash from stream
     });
+    const buildTime = Date.now() - buildStart;
     
+    const signStart = Date.now();
     transaction.sign(trader);
+    const signTime = Date.now() - signStart;
     
+    const serializeStart = Date.now();
     // Send via Jito for fast inclusion
     const jitoPayload = {
       jsonrpc: "2.0",
@@ -179,6 +184,9 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
       params: [transaction.serialize().toString("base64"), { encoding: "base64", skipPreflight: true }],
     };
     
+    const serializeTime = Date.now() - serializeStart;
+    
+    const jitoStart = Date.now();
     const jitoRes = await fetch(JITO_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -188,9 +196,10 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
     const jitoData = await jitoRes.json();
     if (jitoData.error) throw new Error(`Jito: ${jitoData.error.message}`);
     
+    const jitoTime = Date.now() - jitoStart;
     const signature = jitoData.result;
     const sendTime = Date.now() - receivedAt;
-    console.log(`   📤 Buy TX sent in ${sendTime}ms: ${signature.slice(0, 8)}...`);
+    console.log(`   📤 SENT in ${sendTime}ms (build:${buildTime}ms sign:${signTime}ms jito:${jitoTime}ms): ${signature.slice(0, 8)}...`);
     console.log(`   🔗 https://solscan.io/tx/${signature}`);
     
     // Track immediately (don't wait for confirmation)
