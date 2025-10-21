@@ -336,13 +336,31 @@ async function handleStream(client: Client) {
       const meta = dataTx?.meta;
       if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
       
+      // Check if this is a CREATE instruction (discriminator check)
+      const message = dataTx.transaction?.message;
+      if (!message || !message.instructions || message.instructions.length === 0) return;
+      
+      // Look for CREATE instruction (discriminator: 181, 157, 89, 15, 12, 94, 60, 216)
+      const CREATE_DISCRIMINATOR = Buffer.from([181, 157, 89, 15, 12, 94, 60, 216]);
+      let isCreateTx = false;
+      
+      for (const ix of message.instructions) {
+        if (!ix.data || ix.data.length < 8) continue;
+        const ixData = Buffer.from(ix.data);
+        if (ixData.slice(0, 8).equals(CREATE_DISCRIMINATOR)) {
+          isCreateTx = true;
+          break;
+        }
+      }
+      
+      if (!isCreateTx) return; // Skip non-CREATE transactions
+      
       // Get first mint (exact logic from working example)
       const mint = meta.postTokenBalances[0].mint;
       if (!mint) return;
       
       // Get creator from first account key
-      const message = dataTx.transaction?.message;
-      if (!message || !message.accountKeys || message.accountKeys.length === 0) return;
+      if (!message.accountKeys || message.accountKeys.length === 0) return;
       
       // Decode bytes to base58 (like working example)
       const bs58 = await import("bs58");
