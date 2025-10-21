@@ -448,7 +448,7 @@ async function handleStream(client: Client) {
     }
   });
 
-  // Subscribe to BOTH accounts AND transactions (like working sniper)
+  // Subscribe to BOTH accounts AND transactions (EXACT match to working sniper)
   const request = {
     accounts: {
       bondingCurves: {
@@ -463,7 +463,7 @@ async function handleStream(client: Client) {
         vote: false,
         failed: false,
         signature: undefined,
-        accountInclude: [CONFIG.PUMP_PROGRAM.toBase58()],
+        accountInclude: [], // NO FILTER - get all transactions!
         accountExclude: [],
         accountRequired: [],
       },
