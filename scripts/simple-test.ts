@@ -340,21 +340,54 @@ async function handleStream(client: Client) {
       const mint = meta.postTokenBalances[0].mint;
       if (!mint) return;
       
-      // Get creator from first account key
       const message = dataTx.transaction?.message;
-      if (!message || !message.accountKeys || message.accountKeys.length === 0) return;
+      if (!message || !message.instructions || message.instructions.length === 0) return;
       
-      // Decode bytes to base58 (like working example)
+      // Find CREATE instruction and extract creator from instruction DATA
       const bs58 = await import("bs58");
-      const creatorBytes = message.accountKeys[0];
-      const creator = bs58.default.encode(Buffer.from(creatorBytes));
+      const CREATE_DISCRIMINATOR = Buffer.from([181, 157, 89, 15, 12, 94, 60, 216]);
+      let creator: string | null = null;
+      
+      for (const ix of message.instructions) {
+        if (!ix.data || ix.data.length < 8) continue;
+        const ixData = Buffer.from(ix.data);
+        
+        if (ixData.slice(0, 8).equals(CREATE_DISCRIMINATOR)) {
+          // Parse CREATE instruction data:
+          // 8 bytes: discriminator
+          // 4 bytes: name length + name string
+          // 4 bytes: symbol length + symbol string  
+          // 4 bytes: uri length + uri string
+          // 32 bytes: creator pubkey
+          let offset = 8;
+          
+          // Skip name
+          const nameLen = ixData.readUInt32LE(offset);
+          offset += 4 + nameLen;
+          
+          // Skip symbol
+          const symbolLen = ixData.readUInt32LE(offset);
+          offset += 4 + symbolLen;
+          
+          // Skip uri
+          const uriLen = ixData.readUInt32LE(offset);
+          offset += 4 + uriLen;
+          
+          // Read creator (32 bytes)
+          const creatorBytes = ixData.slice(offset, offset + 32);
+          creator = bs58.default.encode(creatorBytes);
+          break;
+        }
+      }
+      
+      if (!creator) return; // No CREATE instruction found
 
       // Extract blockhash from stream
       if (message?.recentBlockhash) {
         cachedBlockhash = bs58.default.encode(Buffer.from(message.recentBlockhash));
       }
 
-      // Process token (mint is already a string from meta, creator is fee payer)
+      // Process token
       buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
 
     } catch (error) {
