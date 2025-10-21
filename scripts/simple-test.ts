@@ -58,11 +58,12 @@ let totalSellFees = 0;
 let cachedBalance = 0;
 let cachedBlockhash: string | null = null;
 
-console.log("🧪 SIMPLE 5-SECOND HOLD TEST");
+console.log("🧪 SIMPLE 3-SECOND HOLD TEST");
 console.log("============================\n");
 console.log(`Wallet: ${trader.publicKey.toBase58()}`);
-console.log(`Buy: ${BUY_AMOUNT} SOL with ~10k lamports fee`);
-console.log(`Sell: After 5s with minimal fee`);
+console.log(`Buy: ${BUY_AMOUNT} SOL via Jito (~10k lamports fee)`);
+console.log(`Sell: After 3s via RPC (minimal fee)`);
+console.log(`Cooldown: 20s between buys`);
 console.log(`Duration: 15 minutes\n`);
 
 /**
@@ -311,12 +312,20 @@ async function handleStream(client: Client) {
   const stream = await client.subscribe();
   console.log("✅ Stream connected\n");
 
+  let eventsReceived = 0;
+  let tokensFiltered = 0;
+
   stream.on("error", (error) => {
     console.error("❌ Stream error:", error);
   });
 
   // Handle data
   stream.on("data", async (data) => {
+    eventsReceived++;
+    if (eventsReceived % 100 === 0) {
+      console.log(`📊 Events: ${eventsReceived}, Tokens: ${tokensFiltered}, Detected: ${tokensDetected}`);
+    }
+    
     const receivedAt = Date.now();
     if (receivedAt > startTime + TEST_DURATION_MS) return; // Stop after 15 min
 
@@ -348,12 +357,14 @@ async function handleStream(client: Client) {
         .filter((b: any) => b.mint && !preMints.has(b.mint))
         .map((b: any) => b.mint);
 
+      tokensFiltered += newTokens.length;
+
       for (const mint of newTokens) {
         buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
       }
 
     } catch (error) {
-      // Silent
+      console.error(`❌ Stream processing error: ${(error as Error).message}`);
     }
   });
 
