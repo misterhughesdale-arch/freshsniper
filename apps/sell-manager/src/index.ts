@@ -17,6 +17,8 @@ import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-tok
 import { readFileSync } from "fs";
 import { loadConfig } from "../../../packages/config/src/index";
 import { buildSellTransaction } from "packages/transactions/src/pumpfun/builders";
+import { fetchBondingCurveState } from "packages/transactions/src/pumpfun/curve-parser";
+import { deriveBondingCurvePDA } from "packages/transactions/src/pumpfun/pdas";
 
 const PUMPFUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
 
@@ -104,13 +106,18 @@ async function executeSell(mintStr: string, reason: string) {
 
     console.log(`   Balance: ${balance.toLocaleString()} tokens`);
 
+    // Fetch creator (we don't have it stored in auto-sell)
+    const [bondingCurve] = deriveBondingCurvePDA(position.mint);
+    const curveState = await fetchBondingCurveState(connection, bondingCurve);
+
     const { transaction } = await buildSellTransaction({
       connection,
       seller: trader.publicKey,
       mint: position.mint,
+      creator: curveState.creator,
       tokenAmount: balance,
       slippageBps: autoSellCfg.sell_slippage_bps || 1000,
-      priorityFeeLamports: autoSellCfg.sell_priority_fee || 5000000,
+      priorityFeeLamports: autoSellCfg.sell_priority_fee || 10000,
     });
 
     transaction.sign(trader);

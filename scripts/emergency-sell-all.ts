@@ -65,14 +65,19 @@ async function main() {
     console.log(`${index + 1}. ${account.mint.slice(0, 8)}... - ${balance.toLocaleString()} tokens`);
 
     try {
+      // Fetch creator (needed for sell)
+      const [bondingCurve] = deriveBondingCurvePDA(mint);
+      const curveState = await fetchBondingCurveState(connection, bondingCurve);
+      
       // Build sell
       const { transaction } = await buildSellTransaction({
         connection,
         seller: trader.publicKey,
         mint,
+        creator: curveState.creator,
         tokenAmount: balance,
-        slippageBps: 1000, // 10% slippage for emergency
-        priorityFeeLamports: 10000000, // 0.01 SOL priority (high)
+        slippageBps: 3000, // 30% slippage for emergency
+        priorityFeeLamports: 1, // Minimal fee
       });
 
       // Sign and send (no simulation for speed)

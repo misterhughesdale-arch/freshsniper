@@ -3,6 +3,7 @@
 ## Architecture Principles
 
 **Centralized Configuration**: All services share ONE config system
+
 - **Source**: `config/default.toml` (+ environment overrides)
 - **Loader**: `packages/config/src/index.ts`
 - **Schema**: `packages/config/src/schema.ts` (Zod validation)
@@ -10,11 +11,13 @@
 ## Adding a New Service
 
 ### 1. Create Service Directory
+
 ```bash
 mkdir -p apps/my-service/src
 ```
 
 ### 2. Service Structure
+
 ```typescript
 // apps/my-service/src/index.ts
 import { config as dotenvConfig } from "dotenv";
@@ -34,6 +37,7 @@ console.log(config.strategy.buy_amount_sol);
 ```
 
 ### 3. Package.json
+
 ```json
 {
   "name": "my-service",
@@ -49,6 +53,7 @@ console.log(config.strategy.buy_amount_sol);
 ```
 
 ### 4. TypeScript Config
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -61,6 +66,7 @@ console.log(config.strategy.buy_amount_sol);
 ```
 
 ### 5. Add to Root package.json
+
 ```json
 {
   "scripts": {
@@ -75,6 +81,7 @@ console.log(config.strategy.buy_amount_sol);
 ## Adding Config Fields
 
 ### 1. Update Schema
+
 ```typescript
 // packages/config/src/schema.ts
 export const FreshSniperConfigSchema = z.object({
@@ -87,6 +94,7 @@ export const FreshSniperConfigSchema = z.object({
 ```
 
 ### 2. Update TOML
+
 ```toml
 # config/default.toml
 [my_new_section]
@@ -95,6 +103,7 @@ my_setting = "${MY_ENV_VAR}"
 ```
 
 ### 3. Use in Service
+
 ```typescript
 const config = loadConfig({ ... });
 if (config.my_new_section.enabled) {
@@ -105,9 +114,11 @@ if (config.my_new_section.enabled) {
 ## Important Paths
 
 When running via pnpm, `process.cwd()` is set to the app directory:
+
 - `pnpm --filter my-service dev` → cwd = `apps/my-service/`
 
 Therefore:
+
 - `.env`: `../../.env`
 - `config/`: `../../config`
 - `keypairs/`: `../../keypairs`
@@ -133,9 +144,9 @@ All apps use: loadConfig({ configDirectory: "../../config" })
 ```
 
 This ensures:
+
 - ✅ One place to change settings
 - ✅ Type-safe config across all services
 - ✅ Environment variable substitution
 - ✅ Validation before startup
 - ✅ Easy to test (inject custom config)
-

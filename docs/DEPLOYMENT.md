@@ -79,6 +79,7 @@ WantedBy=multi-user.target
 ```
 
 Enable and start:
+
 ```bash
 sudo systemctl enable fresh-sniper
 sudo systemctl start fresh-sniper
@@ -90,6 +91,7 @@ sudo journalctl -u fresh-sniper -f
 ### Metrics
 
 Check `logs/mvp-metrics.log`:
+
 ```bash
 tail -f logs/mvp-metrics.log | jq '.summary'
 ```
@@ -104,6 +106,7 @@ tail -f logs/mvp-metrics.log | jq '.summary'
 ### Alerts
 
 Set up alerts for:
+
 - Zero tokens detected for >60 seconds (stream issue)
 - Simulation success rate <50% (RPC issues or insufficient SOL)
 - Transaction failure rate >20% (need to increase priority fee)
@@ -167,6 +170,7 @@ tar -czf backup-$(date +%Y%m%d).tar.gz config/ .env keypairs/
 ### Trade History
 
 Metrics logs contain all trade data:
+
 ```bash
 cp -r logs/ logs-backup-$(date +%Y%m%d)/
 ```
@@ -192,4 +196,3 @@ pnpm build
 # Test before deploying
 pnpm dev:working
 ```
-
