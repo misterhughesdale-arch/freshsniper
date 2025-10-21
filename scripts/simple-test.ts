@@ -342,15 +342,18 @@ async function handleStream(client: Client) {
       // Get creator from first account key
       const message = dataTx.transaction?.message;
       if (!message || !message.accountKeys || message.accountKeys.length === 0) return;
-      const creator = String(message.accountKeys[0]);
+      
+      // Decode bytes to base58 (like working example)
+      const bs58 = await import("bs58");
+      const creatorBytes = message.accountKeys[0];
+      const creator = bs58.default.encode(Buffer.from(creatorBytes));
 
       // Extract blockhash from stream
       if (message?.recentBlockhash) {
-        const bs58 = await import("bs58");
         cachedBlockhash = bs58.default.encode(Buffer.from(message.recentBlockhash));
       }
 
-      // Process token
+      // Process token (mint is already a string from meta)
       buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
 
     } catch (error) {
