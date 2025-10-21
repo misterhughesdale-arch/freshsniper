@@ -397,6 +397,12 @@ async function handleStream(client: Client) {
     if (receivedAt > startTime + TEST_DURATION_MS) return;
 
     try {
+      // Capture blockhash from blockMeta
+      if (data?.blockMeta?.blockhash) {
+        const hashBytes = data.blockMeta.blockhash;
+        cachedBlockhash = typeof hashBytes === 'string' ? hashBytes : bs58.encode(Buffer.from(hashBytes));
+      }
+      
       if (!data?.transaction?.transaction) return;
       
       const dataTx = data.transaction.transaction;
