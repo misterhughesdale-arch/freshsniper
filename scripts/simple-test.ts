@@ -442,14 +442,17 @@ async function handleStream(client: Client) {
     commitment: CommitmentLevel.PROCESSED,
   };
 
-  console.log("🔄 Subscribing to Pump.fun transactions...");
+  console.log("🔄 Subscribing to Pump.fun TOKEN PROGRAM...");
+  console.log(`   Program: ${CONFIG.PUMP_TOKEN_PROGRAM}`);
+  
   await new Promise<void>((resolve, reject) => {
     stream.write(request, (err: any) => {
       if (err) {
         console.error("❌ Subscribe failed:", err);
         reject(err);
       } else {
-        console.log("✅ Subscribed successfully!");
+        console.log("✅ Subscribed successfully to TOKEN PROGRAM!");
+        console.log("   Waiting for CREATE transactions...");
         resolve();
       }
     });
