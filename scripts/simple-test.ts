@@ -403,44 +403,24 @@ async function handleStream(client: Client) {
         cachedBlockhash = typeof hashBytes === 'string' ? hashBytes : bs58.encode(Buffer.from(hashBytes));
       }
       
-      if (!data?.transaction?.transaction) return;
+      // Detect new pump tokens (EXACT logic from working sniper)
+      const txn = data?.transaction;
+      if (!txn?.transaction?.meta?.postTokenBalances) return;
       
-      const dataTx = data.transaction.transaction;
-      const message = dataTx.transaction?.message;
+      const meta = txn.transaction.meta;
+      const mintStr = meta.postTokenBalances[0]?.mint;
       
-      // FIRST: Check if this is a CREATE transaction
-      if (!message || !message.instructions) return;
+      // KEY: Working sniper detects by checking if mint ends with "pump"!
+      if (!mintStr || !mintStr.endsWith("pump")) return;
       
-      let isCreate = false;
-      for (const ix of message.instructions) {
-        if (ix.data && ix.data.length >= 8) {
-          const disc = Buffer.from(ix.data).slice(0, 8);
-          if (disc.equals(DISCRIMINATORS.CREATE)) {
-            isCreate = true;
-            break;
-          }
-        }
-      }
-      
-      if (!isCreate) return; // SKIP non-CREATE transactions
-      
-      const meta = dataTx?.meta;
-      if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
-
-      const mint = meta.postTokenBalances[0].mint;
-      if (!mint) return;
-      
+      const message = txn.transaction.transaction?.message;
       const accountKeys = message?.accountKeys;
       if (!accountKeys || accountKeys.length === 0) return;
       
       const creatorBytes = accountKeys[0];
       const creator = typeof creatorBytes === 'string' ? creatorBytes : bs58.encode(Buffer.from(creatorBytes));
       
-      if (message?.recentBlockhash) {
-        cachedBlockhash = bs58.encode(Buffer.from(message.recentBlockhash));
-      }
-      
-      buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
+      buyToken(mintStr, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
 
     } catch (error) {
       console.error(`   💥 Stream handler error: ${(error as Error).message}`);
@@ -454,7 +434,14 @@ async function handleStream(client: Client) {
       bondingCurves: {
         owner: [CONFIG.PUMP_PROGRAM.toBase58()],
         account: [],
-        filters: [],
+        filters: [
+          {
+            memcmp: {
+              offset: "0",
+              bytes: new Uint8Array(Buffer.from([0x01])), // Bonding curve discriminator
+            },
+          },
+        ],
       },
     },
     slots: {},
@@ -463,7 +450,7 @@ async function handleStream(client: Client) {
         vote: false,
         failed: false,
         signature: undefined,
-        accountInclude: [], // NO FILTER - get all transactions!
+        accountInclude: [], // NO FILTER - get ALL transactions!
         accountExclude: [],
         accountRequired: [],
       },
