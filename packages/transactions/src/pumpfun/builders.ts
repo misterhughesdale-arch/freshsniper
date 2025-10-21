@@ -63,6 +63,7 @@ export interface SellTransactionParams {
   connection: Connection;
   seller: PublicKey;
   mint: PublicKey;
+  creator: PublicKey; // Pass creator, don't fetch!
   tokenAmount: number;
   slippageBps: number;
   priorityFeeLamports?: number;
@@ -166,7 +167,7 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
  * Builds a Pump.fun sell transaction.
  */
 export async function buildSellTransaction(params: SellTransactionParams): Promise<BuildTransactionResult> {
-  const { connection, seller, mint, tokenAmount, slippageBps, priorityFeeLamports = 10000, computeUnits = DEFAULT_COMPUTE_UNITS } = params;
+  const { connection, seller, mint, creator, tokenAmount, slippageBps, priorityFeeLamports = 10000, computeUnits = DEFAULT_COMPUTE_UNITS } = params;
 
   const transaction = new Transaction();
 
@@ -185,16 +186,13 @@ export async function buildSellTransaction(params: SellTransactionParams): Promi
     );
   }
 
-  // Derive PDAs
+  // Derive PDAs - NO RPC CALLS!
   const [bondingCurve] = deriveBondingCurvePDA(mint);
   const associatedBondingCurve = deriveAssociatedBondingCurvePDA(mint);
   const sellerTokenAccount = deriveAssociatedTokenAddress(seller, mint, TOKEN_PROGRAM_ID);
-
-  // Fetch bonding curve state to get REAL creator
-  const curveState = await fetchBondingCurveState(connection, bondingCurve);
-  const [creatorVault] = deriveCreatorVaultPDA(curveState.creator);
-  const [globalVolumeAccumulator] = deriveGlobalVolumeAccumulatorPDA();
-  const [userVolumeAccumulator] = deriveUserVolumeAccumulatorPDA(seller);
+  
+  // Use creator passed from params (same one from buy)
+  const [creatorVault] = deriveCreatorVaultPDA(creator);
   const [feeConfig] = deriveFeeConfigPDA();
 
   // Build sell instruction (16 accounts - same as buy!)
