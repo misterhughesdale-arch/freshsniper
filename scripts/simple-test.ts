@@ -4,7 +4,6 @@ import {
   Connection,
   Keypair,
   PublicKey,
-  SystemProgram,
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import {
@@ -22,7 +21,6 @@ const BUY_AMOUNT = 0.015; // 0.015 SOL per buy
 const SELL_DELAY_MS = 3000; // 3 seconds
 const BUY_COOLDOWN_MS = 20000; // 20 seconds between buys
 const MIN_BALANCE_SOL = 0.05; // Stop if balance drops below this
-const JITO_TIP_LAMPORTS = 10000; // 10k lamports tip for Jito
 const BUY_PRIORITY_FEE = 5000000; // 5M microLamports for reliable landing
 
 const CONFIG = {
