@@ -1,14 +1,12 @@
 import type { Connection, Keypair, Transaction } from "@solana/web3.js";
 import type { FreshSniperConfig } from "@fresh-sniper/config";
-import type { Logger } from "@fresh-sniper/logging";
-import type { MetricsClient } from "@fresh-sniper/metrics";
 import { PublicKey } from "@solana/web3.js";
 import { buildBuyTransaction, buildSellTransaction, type BuildTransactionResult } from "./pumpfun/builders";
 
 interface WorkflowDeps {
   config: FreshSniperConfig;
-  logger: Logger;
-  metrics: MetricsClient;
+  logger: any; // Removed logging package
+  metrics: any; // Removed metrics package
   connection: Connection;
   trader: Keypair;
 }
