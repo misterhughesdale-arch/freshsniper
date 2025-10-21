@@ -321,83 +321,40 @@ async function handleStream(client: Client) {
     console.error("❌ Stream error:", error);
   });
 
-  // Handle data (exact logic from working example)
+  // Handle data - EXACT logic from working stream_pump_fun_new_minted_tokens example
   stream.on("data", async (data) => {
     eventsReceived++;
     if (eventsReceived % 100 === 0) {
-      console.log(`📊 Events: ${eventsReceived}, Creates: ${createInstructionsFound}, Detected: ${tokensDetected}`);
+      console.log(`📊 Events: ${eventsReceived}, Detected: ${tokensDetected}`);
     }
     
     const receivedAt = Date.now();
-    if (receivedAt > startTime + TEST_DURATION_MS) return; // Stop after 15 min
+    if (receivedAt > startTime + TEST_DURATION_MS) return;
 
     try {
       const dataTx = data.transaction.transaction;
-      const message = dataTx.transaction?.message;
-      if (!message || !message.instructions || message.instructions.length === 0) return;
-      
-      // FIRST: Check if this is a CREATE transaction
-      const bs58 = await import("bs58");
-      const CREATE_DISCRIMINATOR = Buffer.from([181, 157, 89, 15, 12, 94, 60, 216]);
-      let creator: string | null = null;
-      let foundCreate = false;
-      
-      for (const ix of message.instructions) {
-        if (!ix.data || ix.data.length < 8) continue;
-        const ixData = Buffer.from(ix.data);
-        
-        // Debug: Log discriminator every 50 events
-        if (eventsReceived % 50 === 0 && !foundCreate) {
-          const disc = ixData.slice(0, 8);
-          console.log(`   🔍 Checking discriminator: ${disc.toString('hex')} vs b59d590f0c5e3cd8`);
-        }
-        
-        if (ixData.slice(0, 8).equals(CREATE_DISCRIMINATOR)) {
-          foundCreate = true;
-          createInstructionsFound++;
-          
-          // Get creator from instruction accounts (index 7 = user/creator)
-          if (!ix.accounts || ix.accounts.length < 8) {
-            console.log(`   ⚠️  CREATE found but not enough accounts: ${ix.accounts?.length || 0}`);
-            continue;
-          }
-          
-          const creatorAccountIndex = ix.accounts[7];
-          if (!message.accountKeys || message.accountKeys.length <= creatorAccountIndex) {
-            console.log(`   ⚠️  Creator account index out of bounds: ${creatorAccountIndex} >= ${message.accountKeys?.length || 0}`);
-            continue;
-          }
-          
-          const creatorBytes = message.accountKeys[creatorAccountIndex];
-          creator = bs58.default.encode(Buffer.from(creatorBytes));
-          console.log(`   ✅ CREATE instruction found! Creator: ${creator.slice(0, 8)}...`);
-          break;
-        }
-      }
-      
-      if (!creator) return; // No CREATE instruction found
-      
-      // NOW check token balances (CREATE transactions should have them)
       const meta = dataTx?.meta;
-      if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) {
-        console.log(`   ⚠️  CREATE found but no token balances`);
-        return;
-      }
-      
-      // Get first mint
+      if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
+
       const mint = meta.postTokenBalances[0].mint;
       if (!mint) return;
+      
+      // Get creator from first account key
+      const message = dataTx.transaction?.message;
+      const accountKeys = message?.accountKeys;
+      if (!accountKeys || accountKeys.length === 0) return;
+      
+      const bs58 = await import("bs58");
+      const creatorBytes = accountKeys[0];
+      const creator = bs58.default.encode(Buffer.from(creatorBytes));
 
-      // Extract blockhash from stream
-      if (message?.recentBlockhash) {
-        cachedBlockhash = bs58.default.encode(Buffer.from(message.recentBlockhash));
-      }
-
+      console.log(`\n🆕 NEWLY MINTED\n   CA: ${mint}\n   Creator: ${creator.slice(0, 8)}...`);
+      
       // Process token
       buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
 
     } catch (error) {
-      // Silent like working example
+      // Silent
     }
   });
 
