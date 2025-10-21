@@ -19,6 +19,7 @@
     "info:positions": "tsx scripts/list-positions.ts",
     "recovery:dust": "tsx scripts/dust-recovery.ts",
     "recovery:bulk": "tsx scripts/bulk-sell-recovery.ts",
+    "sell:manager": "tsx examples/sell-manager.ts",
     "start:hot-route": "pnpm --filter hot-route-app dev",
     "dev:geyser": "pnpm --filter geyser-stream-service dev"
   },
