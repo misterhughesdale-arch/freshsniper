@@ -336,45 +336,14 @@ async function handleStream(client: Client) {
       const meta = txInfo.meta ?? data.transaction.meta;
       if (!meta) return;
       
-      // Extract blockhash from stream (fresh, no RPC call needed!)
-      const messageData = txInfo.message;
-      if (messageData?.recentBlockhash) {
-        const bs58 = await import("bs58");
-        cachedBlockhash = bs58.default.encode(Buffer.from(messageData.recentBlockhash));
-      }
-
-      // Check if this is a CREATE transaction (discriminator: 181, 157, 89, 15, 12, 94, 60, 216)
-      const instructions = messageData?.instructions || [];
-      let isCreateTx = false;
-      
-      for (const ix of instructions) {
-        const data = ix.data;
-        if (!data || data.length < 8) continue;
-        
-        // Check for create discriminator
-        const discriminator = Buffer.from(data.slice(0, 8));
-        const createDiscriminator = Buffer.from([181, 157, 89, 15, 12, 94, 60, 216]);
-        
-        if (discriminator.equals(createDiscriminator)) {
-          isCreateTx = true;
-          break;
-        }
-      }
-
-      // Debug: log every 50th transaction details
-      if (eventsReceived % 50 === 0) {
-        console.log(`   📝 Sample TX: instructions=${instructions.length}, isCreate=${isCreateTx}`);
-      }
-
-      if (!isCreateTx) return; // Only process CREATE transactions
-
-      // Extract new tokens
+      // Extract new tokens (simple detection like sdk-sniper.ts)
       const postBalances = meta.postTokenBalances || [];
       const preBalances = meta.preTokenBalances || [];
       const preMints = new Set(preBalances.map((b: any) => b.mint).filter(Boolean));
-
+      
       // Get creator from first account key
-      const accountKeys = txInfo.message?.accountKeys;
+      const messageData = txInfo.message;
+      const accountKeys = messageData?.accountKeys;
       if (!accountKeys || accountKeys.length === 0) return;
       const creator = String(accountKeys[0]);
 
@@ -382,10 +351,14 @@ async function handleStream(client: Client) {
         .filter((b: any) => b.mint && !preMints.has(b.mint))
         .map((b: any) => b.mint);
 
-      tokensFiltered += newTokens.length;
+      if (newTokens.length === 0) return;
       
-      if (newTokens.length > 0) {
-        console.log(`   🆕 CREATE DETECTED! Mint: ${newTokens[0].slice(0, 16)}...`);
+      tokensFiltered += newTokens.length;
+
+      // Extract blockhash from stream (fresh, no RPC call needed!)
+      if (messageData?.recentBlockhash) {
+        const bs58 = await import("bs58");
+        cachedBlockhash = bs58.default.encode(Buffer.from(messageData.recentBlockhash));
       }
 
       for (const mint of newTokens) {
