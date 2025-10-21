@@ -268,12 +268,12 @@ function createBuyInstruction(params: {
     tokenAmount, maxSolCost 
   } = params;
 
-  // Instruction data: discriminator + token_amount + max_sol_cost + track_volume (Option<bool>)
-  const data = Buffer.alloc(25);
+  // Instruction data: discriminator + token_amount + max_sol_cost
+  // NO track_volume parameter - that was removed in recent version
+  const data = Buffer.alloc(24);
   BUY_DISCRIMINATOR.copy(data, 0);
-  data.writeBigUInt64LE(tokenAmount, 8); // FIXED: Use tokenAmount, not SOL lamports
+  data.writeBigUInt64LE(tokenAmount, 8);
   data.writeBigUInt64LE(maxSolCost, 16);
-  data.writeUInt8(0, 24); // track_volume = None (0 = Option::None)
 
   return new TransactionInstruction({
     keys: [
