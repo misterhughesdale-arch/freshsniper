@@ -396,13 +396,17 @@ async function handleStream(client: Client) {
       
       // Debug: Log why we're skipping
       if (eventsReceived % 50 === 0) {
-        console.log(`   Debug: meta=${!!meta}, postBal=${meta?.postTokenBalances?.length || 0}`);
+        const firstMint = meta?.postTokenBalances?.[0]?.mint;
+        console.log(`   Debug: meta=${!!meta}, postBal=${meta?.postTokenBalances?.length || 0}, mint="${firstMint}"`);
       }
       
       if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
 
       const mint = meta.postTokenBalances[0].mint;
-      if (!mint) return;
+      if (!mint) {
+        console.log(`   ⚠️  Mint is falsy: ${mint}`);
+        return;
+      }
       
       const message = dataTx.transaction?.message;
       const accountKeys = message?.accountKeys;
