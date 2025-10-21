@@ -1,0 +1,20 @@
+{
+  "name": "pnl-monitor-service",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.95.8",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6",
+    "typescript": "^5.7.2"
+  }
+}
+

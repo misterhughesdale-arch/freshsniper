@@ -10,11 +10,11 @@
 import "dotenv/config";
 import { Connection, Keypair, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { readFileSync, writeFileSync, existsSync } from "fs";
-import { loadConfig } from "../packages/config/src/index";
+import { loadConfig } from "../../../packages/config/src/index";
 
 const config = loadConfig();
-const TRADER_KEYPAIR_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
-const keypairData = JSON.parse(readFileSync(TRADER_KEYPAIR_PATH, "utf-8"));
+const keypairPath = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
+const keypairData = JSON.parse(readFileSync(keypairPath, "utf-8"));
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
 
 const CIRCUIT_BREAKER_FILE = "logs/circuit-breaker.json";

@@ -76,9 +76,6 @@ importers:
 
   apps/pnl-monitor:
     dependencies:
-      '@fresh-sniper/config':
-        specifier: workspace:*
-        version: link:../../packages/config
       '@solana/web3.js':
         specifier: ^1.95.8
         version: 1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)
@@ -95,12 +92,6 @@ importers:
 
   apps/sell-manager:
     dependencies:
-      '@fresh-sniper/config':
-        specifier: workspace:*
-        version: link:../../packages/config
-      '@fresh-sniper/transactions':
-        specifier: workspace:*
-        version: link:../../packages/transactions
       '@solana/spl-token':
         specifier: ^0.4.9
         version: 0.4.14(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10)
