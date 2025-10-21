@@ -333,14 +333,32 @@ async function handleStream(client: Client) {
 
     try {
       const dataTx = data.transaction.transaction;
+      const message = dataTx.transaction?.message;
+      if (!message || !message.instructions || message.instructions.length === 0) return;
+      
+      // ONLY process CREATE transactions
+      const CREATE_DISC = Buffer.from([181, 157, 89, 15, 12, 94, 60, 216]);
+      let isCreate = false;
+      
+      for (const ix of message.instructions) {
+        if (ix.data && ix.data.length >= 8) {
+          const disc = Buffer.from(ix.data).slice(0, 8);
+          if (disc.equals(CREATE_DISC)) {
+            isCreate = true;
+            break;
+          }
+        }
+      }
+      
+      if (!isCreate) return; // Skip non-CREATE transactions
+      
       const meta = dataTx?.meta;
       if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
 
       const mint = meta.postTokenBalances[0].mint;
       if (!mint) return;
       
-      // Get creator from first account key
-      const message = dataTx.transaction?.message;
+      // For CREATE tx, accountKeys[0] IS the creator
       const accountKeys = message?.accountKeys;
       if (!accountKeys || accountKeys.length === 0) return;
       
