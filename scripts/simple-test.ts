@@ -144,6 +144,7 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
   }
   
   console.log(`\n🪙 Token #${tokensDetected}: ${mintStr.slice(0, 8)}... (age: ${tokenAge}ms, balance: ${balanceSOL.toFixed(4)} SOL)`);
+  console.log(`   Creator: ${creatorStr.slice(0, 8)}...`);
   
   try {
     const mint = new PublicKey(mintStr);
