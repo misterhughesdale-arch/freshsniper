@@ -189,23 +189,15 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
     if (jitoData.error) throw new Error(`Jito: ${jitoData.error.message}`);
     
     const signature = jitoData.result;
-    console.log(`   📤 Buy TX (Jito): ${signature}`);
+    const sendTime = Date.now() - receivedAt;
+    console.log(`   📤 Buy TX sent in ${sendTime}ms: ${signature.slice(0, 8)}...`);
     console.log(`   🔗 https://solscan.io/tx/${signature}`);
     
-    const confirmation = await connection.confirmTransaction(signature, "confirmed");
-    
-    if (confirmation.value.err) {
-      console.log(`   ❌ Buy FAILED: ${JSON.stringify(confirmation.value.err)}`);
-      return;
-    }
-    
+    // Track immediately (don't wait for confirmation)
     buySuccess++;
     completedBuys++;
-    console.log(`   ✅ Buy CONFIRMED ON-CHAIN - selling in 3s`);
-    
-    // Track buy costs
     totalBuySpent += BUY_AMOUNT;
-    totalBuyFees += (BUY_PRIORITY_FEE / 1e9); // Convert microlamports to SOL
+    totalBuyFees += (BUY_PRIORITY_FEE / 1e9);
     
     // Schedule sell
     pendingSells.push({
@@ -213,6 +205,17 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
       creator,
       buyTime: Date.now(),
       buyTx: signature,
+    });
+    
+    // Check confirmation in background (non-blocking!)
+    connection.confirmTransaction(signature, "confirmed").then((confirmation) => {
+      if (confirmation.value.err) {
+        console.log(`   ❌ ${signature.slice(0, 8)}... FAILED: ${JSON.stringify(confirmation.value.err)}`);
+      } else {
+        console.log(`   ✅ ${signature.slice(0, 8)}... CONFIRMED - selling in 3s`);
+      }
+    }).catch(e => {
+      console.log(`   ⚠️  ${signature.slice(0, 8)}... confirmation check failed: ${e.message}`);
     });
     
     // Reclaim rent every 2 buys
