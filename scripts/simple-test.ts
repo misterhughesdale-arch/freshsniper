@@ -332,42 +332,30 @@ async function handleStream(client: Client) {
     if (receivedAt > startTime + TEST_DURATION_MS) return;
 
     try {
-      const dataTx = data.transaction.transaction;
-      const message = dataTx.transaction?.message;
-      if (!message || !message.instructions || message.instructions.length === 0) return;
+      if (!data.transaction?.transaction?.meta?.postTokenBalances) return;
       
-      // ONLY process CREATE transactions
-      const CREATE_DISC = Buffer.from([181, 157, 89, 15, 12, 94, 60, 216]);
-      let isCreate = false;
+      const meta = data.transaction.transaction.meta;
       
-      for (const ix of message.instructions) {
-        if (ix.data && ix.data.length >= 8) {
-          const disc = Buffer.from(ix.data).slice(0, 8);
-          if (disc.equals(CREATE_DISC)) {
-            isCreate = true;
-            break;
-          }
-        }
-      }
+      // Find .pump mint (like working bot)
+      const pumpBalance = meta.postTokenBalances.find(
+        (balance: any) =>
+          typeof balance?.mint === "string" &&
+          balance.mint.toLowerCase().endsWith("pump")
+      );
       
-      if (!isCreate) return; // Skip non-CREATE transactions
+      const mintStr = pumpBalance?.mint;
+      if (!mintStr) return;
       
-      const meta = dataTx?.meta;
-      if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
-
-      const mint = meta.postTokenBalances[0].mint;
-      if (!mint) return;
-      
-      // For CREATE tx, accountKeys[0] IS the creator
-      const accountKeys = message?.accountKeys;
+      // Get creator from first account key
+      const transaction = data.transaction.transaction.transaction;
+      const accountKeys = transaction.message?.accountKeys;
       if (!accountKeys || accountKeys.length === 0) return;
       
       const bs58 = await import("bs58");
-      const creatorBytes = accountKeys[0];
-      const creator = bs58.default.encode(Buffer.from(creatorBytes));
+      const creator = bs58.default.encode(Buffer.from(accountKeys[0]));
       
       // Process token
-      buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
+      buyToken(mintStr, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
 
     } catch (error) {
       // Silent
