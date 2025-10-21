@@ -154,9 +154,15 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
   
   try {
     const mint = new PublicKey(mintStr);
-    const creator = new PublicKey(creatorStr);
     buyAttempts++;
     lastBuyTime = now;
+    
+    // Fetch bonding curve to get REAL creator (one RPC call but necessary)
+    const { fetchBondingCurveState } = await import("../packages/transactions/src/pumpfun/builders");
+    const curveState = await fetchBondingCurveState(connection, mint);
+    const creator = curveState.creator;
+    
+    console.log(`   Real creator: ${creator.toBase58().slice(0, 8)}... (was: ${creatorStr.slice(0, 8)}...)`);
     
     const buildStart = Date.now();
     const { transaction } = await buildBuyTransaction({
