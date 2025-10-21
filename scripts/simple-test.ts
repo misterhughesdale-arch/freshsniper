@@ -66,12 +66,12 @@ const connection = new Connection(RPC_URL, "processed");
 
 // Config
 const TEST_DURATION_MS = 15 * 60 * 1000; // 15 minutes
-const BUY_AMOUNT = 0.01; // SOL
+const BUY_AMOUNT = 0.015; // SOL (increased for easier P&L tracking)
 const BUY_PRIORITY_FEE = 33333; // microlamports per unit = ~10k lamports total
-const SELL_DELAY_MS = 10000; // 3 seconds
+const SELL_DELAY_MS = 3000; // 3 seconds
 const SELL_PRIORITY_FEE = 100; // minimal
 const MIN_BALANCE_SOL = 0.03;
-const BUY_COOLDOWN_MS = 10000; // 20 seconds between buys
+const BUY_COOLDOWN_MS = 20000; // 20 seconds between buys
 const RECLAIM_EVERY_N_BUYS = 2; // Reclaim ATA rent every 2 buys
 const MAX_TOKEN_AGE_MS = 100; // Only buy tokens younger than 500ms
 
