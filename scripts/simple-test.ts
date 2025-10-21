@@ -442,25 +442,29 @@ async function handleStream(client: Client) {
     }
   });
 
-  // Subscribe - minimal subscription for speed
+  // Subscribe to bonding curve ACCOUNT creations (faster than transaction stream)
   const request = {
-    accounts: {},
-    slots: {},
-    transactions: {
-      pumpfun: {
-        vote: false,
-        failed: false,
-        signature: undefined,
-        accountInclude: [CONFIG.PUMP_TOKEN_PROGRAM.toBase58()],
-        accountExclude: [],
-        accountRequired: [],
+    accounts: {
+      bondingCurves: {
+        owner: [CONFIG.PUMP_PROGRAM.toBase58()],
+        account: [],
+        filters: [],
       },
     },
+    slots: {},
+    transactions: {},
     transactionsStatus: {},
     entry: {},
     blocks: {},
-    blocksMeta: {},
-    accountsDataSlice: [],
+    blocksMeta: {
+      blockmeta: {},
+    },
+    accountsDataSlice: [
+      {
+        offset: "0",
+        length: "100", // First 100 bytes (includes creator at offset 49)
+      },
+    ],
     ping: undefined,
     commitment: CommitmentLevel.PROCESSED,
   };
