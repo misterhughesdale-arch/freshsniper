@@ -192,11 +192,13 @@ export async function buildSellTransaction(params: SellTransactionParams): Promi
   
   // Use creator passed from params (same one from buy)
   const [creatorVault] = deriveCreatorVaultPDA(creator);
+  const [globalVolumeAccumulator] = deriveGlobalVolumeAccumulatorPDA();
+  const [userVolumeAccumulator] = deriveUserVolumeAccumulatorPDA(seller);
   const [feeConfig] = deriveFeeConfigPDA();
 
-  // Build sell instruction (14 accounts - no volume tracking)
+  // Build sell instruction (14 accounts - no volume tracking in instruction itself)
   const tokenAmountRaw = BigInt(Math.floor(tokenAmount * 10 ** TOKEN_DECIMALS));
-  const minSolOutput = BigInt(0); // Calculate based on slippage and current price
+  const minSolOutput = BigInt(0);
 
   const sellInstruction = createSellInstruction({
     seller,
@@ -205,6 +207,8 @@ export async function buildSellTransaction(params: SellTransactionParams): Promi
     associatedBondingCurve,
     sellerTokenAccount,
     creatorVault,
+    globalVolumeAccumulator,
+    userVolumeAccumulator,
     feeConfig,
     tokenAmountRaw,
     minSolOutput,
