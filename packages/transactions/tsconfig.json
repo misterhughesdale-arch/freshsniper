@@ -6,8 +6,6 @@
   },
   "include": ["src/**/*"],
   "references": [
-    { "path": "../config" },
-    { "path": "../logging" },
-    { "path": "../metrics" }
+    { "path": "../config" }
   ]
 }

@@ -2,11 +2,6 @@
   "files": [],
   "references": [
     { "path": "packages/config" },
-    { "path": "packages/logging" },
-    { "path": "packages/metrics" },
-    { "path": "packages/solana-client" },
-    { "path": "packages/transactions" },
-    { "path": "apps/hot-route" },
-    { "path": "services/geyser-stream" }
+    { "path": "packages/transactions" }
   ]
 }
