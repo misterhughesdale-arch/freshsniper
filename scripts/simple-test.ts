@@ -37,7 +37,7 @@ const RECLAIM_EVERY_N_BUYS = 2; // Reclaim ATA rent every 2 buys
 const MAX_TOKEN_AGE_MS = 500; // Only buy tokens younger than 500ms
 
 const startTime = Date.now();
-const pendingSells: Array<{ mint: PublicKey; buyTime: number; buyTx: string }> = [];
+const pendingSells: Array<{ mint: PublicKey; creator: PublicKey; buyTime: number; buyTx: string }> = [];
 const processedMints = new Set<string>(); // Track mints we've already processed
 let tokensDetected = 0;
 let buyAttempts = 0;
@@ -109,7 +109,7 @@ async function reclaimRent() {
 /**
  * Buy token
  */
-async function buyToken(mintStr: string, receivedAt: number) {
+async function buyToken(mintStr: string, creatorStr: string, receivedAt: number) {
   // Deduplication check - don't buy same token twice
   if (processedMints.has(mintStr)) {
     return;
@@ -142,6 +142,7 @@ async function buyToken(mintStr: string, receivedAt: number) {
   
   try {
     const mint = new PublicKey(mintStr);
+    const creator = new PublicKey(creatorStr);
     buyAttempts++;
     lastBuyTime = now;
     
@@ -149,6 +150,7 @@ async function buyToken(mintStr: string, receivedAt: number) {
       connection,
       buyer: trader.publicKey,
       mint,
+      creator,
       amountSol: BUY_AMOUNT,
       slippageBps: 500,
       priorityFeeLamports: BUY_PRIORITY_FEE,
@@ -180,6 +182,7 @@ async function buyToken(mintStr: string, receivedAt: number) {
     // Schedule sell
     pendingSells.push({
       mint,
+      creator,
       buyTime: Date.now(),
       buyTx: signature,
     });
@@ -197,7 +200,7 @@ async function buyToken(mintStr: string, receivedAt: number) {
 /**
  * Sell token
  */
-async function sellToken(position: { mint: PublicKey; buyTime: number; buyTx: string }) {
+async function sellToken(position: { mint: PublicKey; creator: PublicKey; buyTime: number; buyTx: string }) {
   console.log(`\n💰 Selling ${position.mint.toBase58().slice(0, 8)}...`);
   
   try {
@@ -227,6 +230,7 @@ async function sellToken(position: { mint: PublicKey; buyTime: number; buyTx: st
       connection,
       seller: trader.publicKey,
       mint: position.mint,
+      creator: position.creator,
       tokenAmount: balance,
       slippageBps: 1000,
       priorityFeeLamports: SELL_PRIORITY_FEE,
@@ -308,12 +312,17 @@ async function handleStream(client: Client) {
       const preBalances = meta.preTokenBalances || [];
       const preMints = new Set(preBalances.map((b: any) => b.mint).filter(Boolean));
 
+      // Get creator from first account key
+      const accountKeys = txInfo.message?.accountKeys;
+      if (!accountKeys || accountKeys.length === 0) return;
+      const creator = String(accountKeys[0]);
+
       const newTokens = postBalances
         .filter((b: any) => b.mint && !preMints.has(b.mint))
         .map((b: any) => b.mint);
 
       for (const mint of newTokens) {
-        buyToken(mint, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
+        buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
       }
 
     } catch (error) {
