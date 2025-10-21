@@ -449,7 +449,15 @@ async function handleStream(client: Client) {
       
       const bs58 = await import("bs58");
       const creatorBytes = accountKeys[0];
-      const creator = bs58.default.encode(Buffer.from(creatorBytes));
+      console.log(`   🔧 Debug: creatorBytes type: ${typeof creatorBytes}, is Buffer: ${Buffer.isBuffer(creatorBytes)}`);
+      
+      // Handle both Buffer and Uint8Array
+      let creator: string;
+      if (typeof creatorBytes === 'string') {
+        creator = creatorBytes; // Already a string
+      } else {
+        creator = bs58.default.encode(Buffer.from(creatorBytes));
+      }
       
       console.log(`   ✓ Creator: ${creator.slice(0, 8)}...`);
       
