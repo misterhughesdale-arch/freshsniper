@@ -16,6 +16,20 @@ import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { buildBuyTransaction, buildSellTransaction } from "../packages/transactions/src/pumpfun/builders";
 import { readFileSync } from "fs";
 
+// Load blacklist
+const BLACKLIST_PATH = process.env.BLACKLIST_PATH || "/home/memez/Dexter/blacklist.txt";
+const blacklistedCreators = new Set<string>();
+try {
+  const blacklistData = readFileSync(BLACKLIST_PATH, "utf-8");
+  blacklistData.split("\n").forEach(line => {
+    const addr = line.trim();
+    if (addr && addr.length === 44) blacklistedCreators.add(addr);
+  });
+  console.log(`✅ Loaded ${blacklistedCreators.size} blacklisted creators\n`);
+} catch (e) {
+  console.log(`⚠️  No blacklist found at ${BLACKLIST_PATH}\n`);
+}
+
 const GRPC_URL = process.env.GRPC_URL!;
 const X_TOKEN = process.env.X_TOKEN!;
 const RPC_URL = process.env.SOLANA_RPC_PRIMARY!;
