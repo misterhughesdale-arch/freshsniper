@@ -74,6 +74,25 @@ importers:
         specifier: ^4.7.0
         version: 4.20.6
 
+  apps/pnl-monitor:
+    dependencies:
+      '@fresh-sniper/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@solana/web3.js':
+        specifier: ^1.95.8
+        version: 1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.6.1
+    devDependencies:
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
   apps/sell-manager:
     dependencies:
       '@fresh-sniper/config':

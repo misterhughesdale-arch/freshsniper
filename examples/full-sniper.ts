@@ -124,9 +124,29 @@ async function sendViaJito(transaction: Transaction): Promise<string> {
 }
 
 /**
+ * Check if circuit breaker is active
+ */
+function isCircuitBreakerActive(): boolean {
+  try {
+    const fs = require('fs');
+    if (!fs.existsSync('logs/circuit-breaker.json')) return false;
+    const state = JSON.parse(fs.readFileSync('logs/circuit-breaker.json', 'utf-8'));
+    return state.paused === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Process detected token
  */
 async function processToken(mint: string, owner: string, creator: string, receivedAt: number) {
+  // Check circuit breaker
+  if (isCircuitBreakerActive()) {
+    console.log(`🚨 Circuit breaker active - skipping buy`);
+    return;
+  }
+  
   const mintPubkey = new PublicKey(mint);
   const creatorPubkey = new PublicKey(creator);
   
