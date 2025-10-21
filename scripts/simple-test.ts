@@ -26,7 +26,7 @@ const X_TOKEN = process.env.X_TOKEN!;
 const RPC_URL = process.env.SOLANA_RPC_PRIMARY!;
 const JITO_URL = "https://ny.mainnet.block-engine.jito.wtf/api/v1/transactions";
 const TRADER_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
-const PUMPFUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
+const PUMPFUN_TOKEN_PROGRAM = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"; // For token CREATION detection
 
 const keypairData = JSON.parse(readFileSync(TRADER_PATH, "utf-8"));
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
@@ -385,7 +385,7 @@ async function handleStream(client: Client) {
         vote: false,
         failed: false,
         signature: undefined,
-        accountInclude: [PUMPFUN_PROGRAM],
+        accountInclude: [PUMPFUN_TOKEN_PROGRAM], // Use token program for CREATE detection
         accountExclude: [],
         accountRequired: [],
       },
@@ -393,10 +393,12 @@ async function handleStream(client: Client) {
     transactionsStatus: {},
     entry: {},
     blocks: {},
-    blocksMeta: {},
+    blocksMeta: {
+      blockmeta: {}, // Subscribe to block meta for blockhash
+    },
     accountsDataSlice: [],
     ping: undefined,
-    commitment: CommitmentLevel.PROCESSED, // Use PROCESSED for speed like working example
+    commitment: CommitmentLevel.PROCESSED,
   };
 
   console.log("🔄 Subscribing to Pump.fun transactions...");
