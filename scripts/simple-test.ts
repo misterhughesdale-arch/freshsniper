@@ -99,7 +99,7 @@ let cachedBlockhash: string | null = null;
 console.log("🧪 SIMPLE 3-SECOND HOLD TEST");
 console.log("============================\n");
 console.log(`Wallet: ${trader.publicKey.toBase58()}`);
-console.log(`Buy: ${BUY_AMOUNT} SOL via Jito (~10k lamports fee)`);
+console.log(`Buy: ${BUY_AMOUNT} SOL via Jito (~10k lamports fee + 10k tip)`);
 console.log(`Sell: After 3s via RPC (minimal fee)`);
 console.log(`Cooldown: 20s between buys`);
 console.log(`Duration: 15 minutes\n`);
