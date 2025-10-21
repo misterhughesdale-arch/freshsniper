@@ -332,30 +332,24 @@ async function handleStream(client: Client) {
     if (receivedAt > startTime + TEST_DURATION_MS) return;
 
     try {
-      if (!data.transaction?.transaction?.meta?.postTokenBalances) return;
-      
-      const meta = data.transaction.transaction.meta;
-      
-      // Find .pump mint (like working bot)
-      const pumpBalance = meta.postTokenBalances.find(
-        (balance: any) =>
-          typeof balance?.mint === "string" &&
-          balance.mint.toLowerCase().endsWith("pump")
-      );
-      
-      const mintStr = pumpBalance?.mint;
-      if (!mintStr) return;
+      const dataTx = data.transaction.transaction;
+      const meta = dataTx?.meta;
+      if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
+
+      const mint = meta.postTokenBalances[0].mint;
+      if (!mint) return;
       
       // Get creator from first account key
-      const transaction = data.transaction.transaction.transaction;
-      const accountKeys = transaction.message?.accountKeys;
+      const message = dataTx.transaction?.message;
+      const accountKeys = message?.accountKeys;
       if (!accountKeys || accountKeys.length === 0) return;
       
       const bs58 = await import("bs58");
-      const creator = bs58.default.encode(Buffer.from(accountKeys[0]));
+      const creatorBytes = accountKeys[0];
+      const creator = bs58.default.encode(Buffer.from(creatorBytes));
       
       // Process token
-      buyToken(mintStr, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
+      buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
 
     } catch (error) {
       // Silent
