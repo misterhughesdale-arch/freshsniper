@@ -18,7 +18,6 @@ import { readFileSync } from "fs";
 const GRPC_URL = process.env.GRPC_URL!;
 const X_TOKEN = process.env.X_TOKEN!;
 const RPC_URL = process.env.SOLANA_RPC_PRIMARY!;
-const JITO_URL = "https://ny.mainnet.block-engine.jito.wtf/api/v1/transactions";
 const TRADER_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
 const PUMPFUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
 
@@ -28,9 +27,9 @@ const connection = new Connection(RPC_URL, "confirmed");
 
 // Config
 const TEST_DURATION_MS = 15 * 60 * 1000; // 15 minutes
-const BUY_AMOUNT = 0.01 // SOL
+const BUY_AMOUNT = 0.01; // SOL
 const BUY_PRIORITY_FEE = 33333; // microlamports per unit = ~10k lamports total
-const SELL_DELAY_MS = 5000; // 3 seconds
+const SELL_DELAY_MS = 3000; // 3 seconds
 const SELL_PRIORITY_FEE = 100; // minimal
 const MIN_BALANCE_SOL = 0.03;
 const BUY_COOLDOWN_MS = 20000; // 20 seconds between buys
@@ -38,7 +37,7 @@ const RECLAIM_EVERY_N_BUYS = 2; // Reclaim ATA rent every 2 buys
 const MAX_TOKEN_AGE_MS = 500; // Only buy tokens younger than 500ms
 
 const startTime = Date.now();
-const pendingSells: Array<{ mint: PublicKey; creator: PublicKey; buyTime: number; buyTx: string }> = [];
+const pendingSells: Array<{ mint: PublicKey; buyTime: number; buyTx: string }> = [];
 const processedMints = new Set<string>(); // Track mints we've already processed
 let tokensDetected = 0;
 let buyAttempts = 0;
@@ -54,14 +53,12 @@ let totalBuyFees = 0;
 let totalSellReceived = 0;
 let totalSellFees = 0;
 
-console.log("🧪 SIMPLE 3-SECOND HOLD TEST");
+console.log("🧪 SIMPLE 5-SECOND HOLD TEST");
 console.log("============================\n");
 console.log(`Wallet: ${trader.publicKey.toBase58()}`);
-console.log(`Buy: ${BUY_AMOUNT} SOL via Jito (~10k lamports fee)`);
-console.log(`Sell: After 3s via RPC (minimal fee)`);
-console.log(`Cooldown: 20s between buys`);
+console.log(`Buy: ${BUY_AMOUNT} SOL with ~10k lamports fee`);
+console.log(`Sell: After 5s with minimal fee`);
 console.log(`Duration: 15 minutes\n`);
-console.log(`Connecting to Geyser...`);
 
 /**
  * Reclaim rent from empty ATAs
@@ -112,7 +109,7 @@ async function reclaimRent() {
 /**
  * Buy token
  */
-async function buyToken(mintStr: string, creatorStr: string, receivedAt: number) {
+async function buyToken(mintStr: string, receivedAt: number) {
   // Deduplication check - don't buy same token twice
   if (processedMints.has(mintStr)) {
     return;
@@ -148,44 +145,21 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
     buyAttempts++;
     lastBuyTime = now;
     
-    const creator = new PublicKey(creatorStr);
-    
     const { transaction } = await buildBuyTransaction({
       connection,
       buyer: trader.publicKey,
       mint,
-      creator, // Pass creator from stream
       amountSol: BUY_AMOUNT,
       slippageBps: 500,
       priorityFeeLamports: BUY_PRIORITY_FEE,
     });
     
     transaction.sign(trader);
-    
-    // Send via JITO for fast inclusion
-    const jitoPayload = {
-      jsonrpc: "2.0",
-      id: 1,
-      method: "sendTransaction",
-      params: [
-        transaction.serialize().toString("base64"),
-        { encoding: "base64", skipPreflight: true }
-      ],
-    };
-    
-    const jitoResponse = await fetch(JITO_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(jitoPayload),
+    const signature = await connection.sendRawTransaction(transaction.serialize(), {
+      skipPreflight: true,
     });
     
-    const jitoData = await jitoResponse.json();
-    if (jitoData.error) {
-      throw new Error(`Jito error: ${jitoData.error.message}`);
-    }
-    
-    const signature = jitoData.result;
-    console.log(`   📤 Buy TX (via Jito): ${signature}`);
+    console.log(`   📤 Buy TX: ${signature}`);
     console.log(`   🔗 https://solscan.io/tx/${signature}`);
     
     const confirmation = await connection.confirmTransaction(signature, "confirmed");
@@ -206,7 +180,6 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
     // Schedule sell
     pendingSells.push({
       mint,
-      creator,
       buyTime: Date.now(),
       buyTx: signature,
     });
@@ -224,7 +197,7 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
 /**
  * Sell token
  */
-async function sellToken(position: { mint: PublicKey; creator: PublicKey; buyTime: number; buyTx: string }) {
+async function sellToken(position: { mint: PublicKey; buyTime: number; buyTx: string }) {
   console.log(`\n💰 Selling ${position.mint.toBase58().slice(0, 8)}...`);
   
   try {
@@ -254,7 +227,6 @@ async function sellToken(position: { mint: PublicKey; creator: PublicKey; buyTim
       connection,
       seller: trader.publicKey,
       mint: position.mint,
-      creator: position.creator, // Use creator from buy
       tokenAmount: balance,
       slippageBps: 1000,
       priorityFeeLamports: SELL_PRIORITY_FEE,
@@ -319,15 +291,8 @@ async function handleStream(client: Client) {
     console.error("❌ Stream error:", error);
   });
 
-  let eventsReceived = 0;
-  
   // Handle data
   stream.on("data", async (data) => {
-    eventsReceived++;
-    if (eventsReceived % 100 === 0) {
-      console.log(`📊 Stream events received: ${eventsReceived}`);
-    }
-    
     const receivedAt = Date.now();
     if (receivedAt > startTime + TEST_DURATION_MS) return; // Stop after 15 min
 
@@ -343,26 +308,16 @@ async function handleStream(client: Client) {
       const preBalances = meta.preTokenBalances || [];
       const preMints = new Set(preBalances.map((b: any) => b.mint).filter(Boolean));
 
-      // Get creator (first account key = signer)
-      const accountKeys = txInfo.message?.accountKeys;
-      if (!accountKeys || accountKeys.length === 0) return;
-      const creator = String(accountKeys[0]);
-
       const newTokens = postBalances
         .filter((b: any) => b.mint && !preMints.has(b.mint))
         .map((b: any) => b.mint);
 
-      if (newTokens.length > 0) {
-        console.log(`🆕 Detected ${newTokens.length} new token(s)`);
-      }
-
       for (const mint of newTokens) {
-        buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
+        buyToken(mint, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
       }
 
     } catch (error) {
-      console.error(`❌ Stream processing error: ${(error as Error).message}`);
-      console.error((error as Error).stack);
+      // Silent
     }
   });
 
