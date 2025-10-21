@@ -442,7 +442,7 @@ async function handleStream(client: Client) {
     }
   });
 
-  // Subscribe
+  // Subscribe - minimal subscription for speed
   const request = {
     accounts: {},
     slots: {},
@@ -451,7 +451,7 @@ async function handleStream(client: Client) {
         vote: false,
         failed: false,
         signature: undefined,
-        accountInclude: [CONFIG.PUMP_TOKEN_PROGRAM.toBase58()], // Token program for CREATE detection
+        accountInclude: [CONFIG.PUMP_TOKEN_PROGRAM.toBase58()],
         accountExclude: [],
         accountRequired: [],
       },
@@ -459,9 +459,7 @@ async function handleStream(client: Client) {
     transactionsStatus: {},
     entry: {},
     blocks: {},
-    blocksMeta: {
-      blockmeta: {}, // Subscribe to block meta for blockhash
-    },
+    blocksMeta: {},
     accountsDataSlice: [],
     ping: undefined,
     commitment: CommitmentLevel.PROCESSED,
