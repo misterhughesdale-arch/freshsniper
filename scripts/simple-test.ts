@@ -343,15 +343,35 @@ async function handleStream(client: Client) {
         cachedBlockhash = bs58.default.encode(Buffer.from(messageData.recentBlockhash));
       }
 
+      // Check if this is a CREATE transaction (discriminator: 181, 157, 89, 15, 12, 94, 60, 216)
+      const instructions = messageData?.instructions || [];
+      let isCreateTx = false;
+      
+      for (const ix of instructions) {
+        const data = ix.data;
+        if (!data || data.length < 8) continue;
+        
+        // Check for create discriminator
+        const discriminator = Buffer.from(data.slice(0, 8));
+        const createDiscriminator = Buffer.from([181, 157, 89, 15, 12, 94, 60, 216]);
+        
+        if (discriminator.equals(createDiscriminator)) {
+          isCreateTx = true;
+          break;
+        }
+      }
+
+      // Debug: log every 50th transaction details
+      if (eventsReceived % 50 === 0) {
+        console.log(`   📝 Sample TX: instructions=${instructions.length}, isCreate=${isCreateTx}`);
+      }
+
+      if (!isCreateTx) return; // Only process CREATE transactions
+
       // Extract new tokens
       const postBalances = meta.postTokenBalances || [];
       const preBalances = meta.preTokenBalances || [];
       const preMints = new Set(preBalances.map((b: any) => b.mint).filter(Boolean));
-
-      // Debug: log every 50th transaction details
-      if (eventsReceived % 50 === 0) {
-        console.log(`   📝 Sample TX: post=${postBalances.length}, pre=${preBalances.length}`);
-      }
 
       // Get creator from first account key
       const accountKeys = txInfo.message?.accountKeys;
@@ -365,7 +385,7 @@ async function handleStream(client: Client) {
       tokensFiltered += newTokens.length;
       
       if (newTokens.length > 0) {
-        console.log(`   🆕 NEW TOKEN FOUND! Mint: ${newTokens[0].slice(0, 16)}...`);
+        console.log(`   🆕 CREATE DETECTED! Mint: ${newTokens[0].slice(0, 16)}...`);
       }
 
       for (const mint of newTokens) {
