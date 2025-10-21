@@ -154,15 +154,9 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
   
   try {
     const mint = new PublicKey(mintStr);
+    const creator = new PublicKey(creatorStr);
     buyAttempts++;
     lastBuyTime = now;
-    
-    // Fetch bonding curve to get REAL creator (one RPC call but necessary)
-    const { fetchBondingCurveState } = await import("../packages/transactions/src/pumpfun/builders");
-    const curveState = await fetchBondingCurveState(connection, mint);
-    const creator = curveState.creator;
-    
-    console.log(`   Real creator: ${creator.toBase58().slice(0, 8)}... (was: ${creatorStr.slice(0, 8)}...)`);
     
     const buildStart = Date.now();
     const { transaction } = await buildBuyTransaction({
@@ -357,14 +351,32 @@ async function handleStream(client: Client) {
 
     try {
       const dataTx = data.transaction.transaction;
+      const message = dataTx.transaction?.message;
+      if (!message || !message.instructions) return;
+      
+      // ONLY process CREATE transactions (discriminator filter)
+      const CREATE_DISC = Buffer.from([181, 157, 89, 15, 12, 94, 60, 216]);
+      let isCreate = false;
+      
+      for (const ix of message.instructions) {
+        if (ix.data && ix.data.length >= 8) {
+          const disc = Buffer.from(ix.data).slice(0, 8);
+          if (disc.equals(CREATE_DISC)) {
+            isCreate = true;
+            break;
+          }
+        }
+      }
+      
+      if (!isCreate) return; // Skip buys/sells
+      
+      // Now we KNOW this is a CREATE, so accountKeys[0] IS the creator
       const meta = dataTx?.meta;
       if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
 
       const mint = meta.postTokenBalances[0].mint;
       if (!mint) return;
       
-      // Get creator from first account key
-      const message = dataTx.transaction?.message;
       const accountKeys = message?.accountKeys;
       if (!accountKeys || accountKeys.length === 0) return;
       
@@ -372,7 +384,7 @@ async function handleStream(client: Client) {
       const creatorBytes = accountKeys[0];
       const creator = bs58.default.encode(Buffer.from(creatorBytes));
       
-      // Extract blockhash from stream (ZERO RPC call!)
+      // Extract blockhash from stream
       if (message?.recentBlockhash) {
         cachedBlockhash = bs58.default.encode(Buffer.from(message.recentBlockhash));
       }
