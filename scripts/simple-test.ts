@@ -437,12 +437,21 @@ async function handleStream(client: Client) {
         return;
       }
       
+      console.log(`   ✓ Found mint: ${mint.slice(0, 8)}...`);
+      
       const accountKeys = message?.accountKeys;
-      if (!accountKeys || accountKeys.length === 0) return;
+      if (!accountKeys || accountKeys.length === 0) {
+        console.log(`   ⚠️  No accountKeys in CREATE tx`);
+        return;
+      }
+      
+      console.log(`   ✓ AccountKeys: ${accountKeys.length}`);
       
       const bs58 = await import("bs58");
       const creatorBytes = accountKeys[0];
       const creator = bs58.default.encode(Buffer.from(creatorBytes));
+      
+      console.log(`   ✓ Creator: ${creator.slice(0, 8)}...`);
       
       if (message?.recentBlockhash) {
         cachedBlockhash = bs58.default.encode(Buffer.from(message.recentBlockhash));
