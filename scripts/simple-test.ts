@@ -11,9 +11,15 @@
 import "dotenv/config";
 import Client, { CommitmentLevel } from "@triton-one/yellowstone-grpc";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { buildBuyTransaction, buildSellTransaction } from "../packages/transactions/src/pumpfun/builders";
 import { readFileSync } from "fs";
+
+// ============================================================================
+// CONSTANTS & LOCAL PDA DERIVATIONS (ZERO RPC CALLS)
+// ============================================================================
+
+const PUMP_PROGRAM = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
 
 const GRPC_URL = process.env.GRPC_URL!;
 const X_TOKEN = process.env.X_TOKEN!;
