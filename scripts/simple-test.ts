@@ -352,22 +352,13 @@ async function handleStream(client: Client) {
     try {
       const dataTx = data.transaction.transaction;
       const meta = dataTx?.meta;
-      const message = dataTx.transaction?.message;
-      
-      if (!meta || !message) return;
-      
-      // Check for NEW tokens (CREATE = token appears in POST but not PRE)
-      const postBalances = meta.postTokenBalances || [];
-      const preBalances = meta.preTokenBalances || [];
-      const preMints = new Set(preBalances.map((b: any) => b.mint).filter(Boolean));
-      
-      const newTokens = postBalances.filter((b: any) => b.mint && !preMints.has(b.mint));
-      if (newTokens.length === 0) return; // Not a CREATE transaction
-      
-      const mint = newTokens[0].mint;
+      if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
+
+      const mint = meta.postTokenBalances[0].mint;
       if (!mint) return;
       
-      // For CREATE transactions, accountKeys[0] IS the creator
+      // Get creator from first account key
+      const message = dataTx.transaction?.message;
       const accountKeys = message?.accountKeys;
       if (!accountKeys || accountKeys.length === 0) return;
       
