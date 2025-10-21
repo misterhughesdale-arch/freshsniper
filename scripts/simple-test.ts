@@ -397,32 +397,33 @@ async function handleStream(client: Client) {
 
     try {
       const dataTx = data.transaction.transaction;
-      const meta = dataTx?.meta;
+      const message = dataTx.transaction?.message;
       
-      // Debug: Log why we're skipping
-      if (eventsReceived % 50 === 0) {
-        const firstMint = meta?.postTokenBalances?.[0]?.mint;
-        console.log(`   Debug: meta=${!!meta}, postBal=${meta?.postTokenBalances?.length || 0}, mint="${firstMint}"`);
+      // FIRST: Check if this is a CREATE transaction
+      if (!message || !message.instructions) return;
+      
+      let isCreate = false;
+      for (const ix of message.instructions) {
+        if (ix.data && ix.data.length >= 8) {
+          const disc = Buffer.from(ix.data).slice(0, 8);
+          if (disc.equals(DISCRIMINATORS.CREATE)) {
+            isCreate = true;
+            break;
+          }
+        }
       }
       
+      if (!isCreate) return; // SKIP non-CREATE transactions (buys/sells of old tokens)
+      
+      // Now we know it's a CREATE, so process it
+      const meta = dataTx?.meta;
       if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
 
       const mint = meta.postTokenBalances[0].mint;
-      if (!mint) {
-        console.log(`   ⚠️  Mint is falsy: ${mint}`);
-        return;
-      }
+      if (!mint) return;
       
-      const message = dataTx.transaction?.message;
       const accountKeys = message?.accountKeys;
-      
-      if (eventsReceived % 50 === 0) {
-        console.log(`   Debug: message=${!!message}, accountKeys=${accountKeys?.length || 0}`);
-      }
-      
-      if (!accountKeys || accountKeys.length === 0) {
-        return;
-      }
+      if (!accountKeys || accountKeys.length === 0) return;
       
       const bs58 = await import("bs58");
       const creatorBytes = accountKeys[0];
