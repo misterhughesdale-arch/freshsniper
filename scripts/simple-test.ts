@@ -15,6 +15,7 @@ import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, createAssociatedTokenA
 import { buildBuyTransaction, buildSellTransaction } from "../packages/transactions/src/pumpfun/builders";
 import { readFileSync } from "fs";
 import BN from "bn.js";
+import bs58 from "bs58";
 
 // ============================================================================
 // CONSTANTS & LOCAL PDA DERIVATIONS (ZERO RPC CALLS)
@@ -396,6 +397,8 @@ async function handleStream(client: Client) {
     if (receivedAt > startTime + TEST_DURATION_MS) return;
 
     try {
+      if (!data?.transaction?.transaction) return;
+      
       const dataTx = data.transaction.transaction;
       const message = dataTx.transaction?.message;
       
@@ -447,22 +450,13 @@ async function handleStream(client: Client) {
       
       console.log(`   ✓ AccountKeys: ${accountKeys.length}`);
       
-      const bs58 = await import("bs58");
       const creatorBytes = accountKeys[0];
-      console.log(`   🔧 Debug: creatorBytes type: ${typeof creatorBytes}, is Buffer: ${Buffer.isBuffer(creatorBytes)}`);
-      
-      // Handle both Buffer and Uint8Array
-      let creator: string;
-      if (typeof creatorBytes === 'string') {
-        creator = creatorBytes; // Already a string
-      } else {
-        creator = bs58.default.encode(Buffer.from(creatorBytes));
-      }
+      const creator = typeof creatorBytes === 'string' ? creatorBytes : bs58.encode(Buffer.from(creatorBytes));
       
       console.log(`   ✓ Creator: ${creator.slice(0, 8)}...`);
       
       if (message?.recentBlockhash) {
-        cachedBlockhash = bs58.default.encode(Buffer.from(message.recentBlockhash));
+        cachedBlockhash = bs58.encode(Buffer.from(message.recentBlockhash));
       }
       
       console.log(`   🎯 Calling buyToken for ${mint.slice(0, 8)}...`);
