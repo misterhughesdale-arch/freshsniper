@@ -469,7 +469,8 @@ async function handleStream(client: Client) {
       buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
 
     } catch (error) {
-      // Silent
+      console.error(`   💥 Stream handler error: ${(error as Error).message}`);
+      console.error((error as Error).stack);
     }
   });
 
