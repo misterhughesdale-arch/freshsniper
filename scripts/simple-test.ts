@@ -332,37 +332,28 @@ async function handleStream(client: Client) {
     if (receivedAt > startTime + TEST_DURATION_MS) return; // Stop after 15 min
 
     try {
-      // Exact structure from working example
       const dataTx = data.transaction.transaction;
-      const meta = dataTx?.meta;
-      if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
-      
-      // Get first mint (exact logic from working example)
-      const mint = meta.postTokenBalances[0].mint;
-      if (!mint) return;
-      
       const message = dataTx.transaction?.message;
       if (!message || !message.instructions || message.instructions.length === 0) return;
       
-      // Find CREATE instruction and get creator from ACCOUNTS (index 7 = user/creator)
+      // FIRST: Check if this is a CREATE transaction
       const bs58 = await import("bs58");
       const CREATE_DISCRIMINATOR = Buffer.from([181, 157, 89, 15, 12, 94, 60, 216]);
       let creator: string | null = null;
-      
-      // Debug: Log first instruction discriminator every 50 events
-      if (eventsReceived % 50 === 0 && message.instructions.length > 0) {
-        const firstIx = message.instructions[0];
-        if (firstIx.data && firstIx.data.length >= 8) {
-          const disc = Buffer.from(firstIx.data).slice(0, 8);
-          console.log(`   🔍 Sample discriminator: ${disc.toString('hex')} (${disc.length} bytes)`);
-        }
-      }
+      let foundCreate = false;
       
       for (const ix of message.instructions) {
         if (!ix.data || ix.data.length < 8) continue;
         const ixData = Buffer.from(ix.data);
         
+        // Debug: Log discriminator every 50 events
+        if (eventsReceived % 50 === 0 && !foundCreate) {
+          const disc = ixData.slice(0, 8);
+          console.log(`   🔍 Checking discriminator: ${disc.toString('hex')} vs b59d590f0c5e3cd8`);
+        }
+        
         if (ixData.slice(0, 8).equals(CREATE_DISCRIMINATOR)) {
+          foundCreate = true;
           createInstructionsFound++;
           
           // Get creator from instruction accounts (index 7 = user/creator)
@@ -385,6 +376,17 @@ async function handleStream(client: Client) {
       }
       
       if (!creator) return; // No CREATE instruction found
+      
+      // NOW check token balances (CREATE transactions should have them)
+      const meta = dataTx?.meta;
+      if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) {
+        console.log(`   ⚠️  CREATE found but no token balances`);
+        return;
+      }
+      
+      // Get first mint
+      const mint = meta.postTokenBalances[0].mint;
+      if (!mint) return;
 
       // Extract blockhash from stream
       if (message?.recentBlockhash) {
