@@ -414,7 +414,10 @@ async function handleStream(client: Client) {
       
       const message = dataTx.transaction?.message;
       const accountKeys = message?.accountKeys;
-      if (!accountKeys || accountKeys.length === 0) return;
+      if (!accountKeys || accountKeys.length === 0) {
+        if (eventsReceived % 50 === 0) console.log(`   Debug: No accountKeys`);
+        return;
+      }
       
       const bs58 = await import("bs58");
       const creatorBytes = accountKeys[0];
@@ -424,6 +427,7 @@ async function handleStream(client: Client) {
         cachedBlockhash = bs58.default.encode(Buffer.from(message.recentBlockhash));
       }
       
+      console.log(`   🎯 Calling buyToken for ${mint.slice(0, 8)}...`);
       buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
 
     } catch (error) {
