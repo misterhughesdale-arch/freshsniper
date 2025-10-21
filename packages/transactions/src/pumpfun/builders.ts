@@ -46,7 +46,6 @@ import {
   deriveGlobalVolumeAccumulatorPDA,
   deriveUserVolumeAccumulatorPDA,
 } from "./pdas";
-import { fetchBondingCurveState } from "./curve-parser";
 
 export interface BuyTransactionParams {
   connection: Connection;

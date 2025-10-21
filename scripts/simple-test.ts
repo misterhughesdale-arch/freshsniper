@@ -54,12 +54,14 @@ let totalBuyFees = 0;
 let totalSellReceived = 0;
 let totalSellFees = 0;
 
-console.log("🧪 SIMPLE 5-SECOND HOLD TEST");
+console.log("🧪 SIMPLE 3-SECOND HOLD TEST");
 console.log("============================\n");
 console.log(`Wallet: ${trader.publicKey.toBase58()}`);
-console.log(`Buy: ${BUY_AMOUNT} SOL with ~10k lamports fee`);
-console.log(`Sell: After 5s with minimal fee`);
+console.log(`Buy: ${BUY_AMOUNT} SOL via Jito (~10k lamports fee)`);
+console.log(`Sell: After 3s via RPC (minimal fee)`);
+console.log(`Cooldown: 20s between buys`);
 console.log(`Duration: 15 minutes\n`);
+console.log(`Connecting to Geyser...`);
 
 /**
  * Reclaim rent from empty ATAs
@@ -317,8 +319,15 @@ async function handleStream(client: Client) {
     console.error("❌ Stream error:", error);
   });
 
+  let eventsReceived = 0;
+  
   // Handle data
   stream.on("data", async (data) => {
+    eventsReceived++;
+    if (eventsReceived % 100 === 0) {
+      console.log(`📊 Stream events received: ${eventsReceived}`);
+    }
+    
     const receivedAt = Date.now();
     if (receivedAt > startTime + TEST_DURATION_MS) return; // Stop after 15 min
 
@@ -343,12 +352,17 @@ async function handleStream(client: Client) {
         .filter((b: any) => b.mint && !preMints.has(b.mint))
         .map((b: any) => b.mint);
 
+      if (newTokens.length > 0) {
+        console.log(`🆕 Detected ${newTokens.length} new token(s)`);
+      }
+
       for (const mint of newTokens) {
         buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
       }
 
     } catch (error) {
-      // Silent
+      console.error(`❌ Stream processing error: ${(error as Error).message}`);
+      console.error((error as Error).stack);
     }
   });
 
