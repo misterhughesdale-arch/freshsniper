@@ -327,12 +327,12 @@ function createSellInstruction(params: {
     tokenAmountRaw, minSolOutput 
   } = params;
 
-  // Instruction data: discriminator + amount + min_sol_output + track_volume (Option<bool>)
-  const data = Buffer.alloc(25);
+  // Instruction data: discriminator + amount + min_sol_output
+  // NO track_volume parameter
+  const data = Buffer.alloc(24);
   SELL_DISCRIMINATOR.copy(data, 0);
   data.writeBigUInt64LE(tokenAmountRaw, 8);
   data.writeBigUInt64LE(minSolOutput, 16);
-  data.writeUInt8(0, 24); // track_volume = None (0 = Option::None)
 
   return new TransactionInstruction({
     keys: [
