@@ -83,8 +83,7 @@ async function reclaimRent() {
   console.log(`\n💸 Reclaiming rent from empty ATAs...`);
   
   try {
-    const { Transaction, SystemProgram } = await import("@solana/web3.js");
-    const { createCloseAccountInstruction } = await import("@solana/spl-token/lib/cjs/index.js");
+    const { Transaction, SystemProgram, createCloseAccountInstruction } = await import("@solana/web3.js");
     
     const tokenAccounts = await connection.getParsedTokenAccountsByOwner(trader.publicKey, {
       programId: TOKEN_PROGRAM_ID,
@@ -102,8 +101,10 @@ async function reclaimRent() {
     console.log(`   Closing ${emptyATAs.length} empty ATAs (~${(emptyATAs.length * 0.00203).toFixed(5)} SOL)`);
     
     const tx = new Transaction();
+    // Import from top-level
+    const spl = await import("@solana/spl-token");
     for (const ata of emptyATAs) {
-      tx.add(createCloseAccountInstruction(
+      tx.add(spl.createCloseAccountInstruction(
         ata.pubkey,
         trader.publicKey,
         trader.publicKey,
