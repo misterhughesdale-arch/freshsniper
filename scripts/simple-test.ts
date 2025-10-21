@@ -10,23 +10,36 @@
 
 import "dotenv/config";
 import Client, { CommitmentLevel } from "@triton-one/yellowstone-grpc";
-import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { Connection, Keypair, PublicKey, Transaction, SystemProgram, TransactionInstruction, ComputeBudgetProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import { buildBuyTransaction, buildSellTransaction } from "../packages/transactions/src/pumpfun/builders";
 import { readFileSync } from "fs";
+import BN from "bn.js";
 
 // ============================================================================
 // CONSTANTS & LOCAL PDA DERIVATIONS (ZERO RPC CALLS)
 // ============================================================================
 
-const PUMP_PROGRAM = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
+const CONFIG = {
+  PUMP_PROGRAM: new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"),
+  PUMP_TOKEN_PROGRAM: "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM",
+  PUMP_GLOBAL: new PublicKey("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf"),
+  PUMP_FEE_RECIPIENT: new PublicKey("CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM"),
+  PUMP_EVENT_AUTHORITY: new PublicKey("Ce6TQqeHC9p8KetsN6JsjHK7UTZk7nasjjnr7XxXp9F1"),
+  PUMP_FEE_PROGRAM: new PublicKey("pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ"),
+  COMPUTE_UNITS: 250000,
+};
+
+const DISCRIMINATORS = {
+  BUY: Buffer.from([0x66, 0x06, 0x3d, 0x12, 0x01, 0xda, 0xeb, 0xea]),
+  SELL: Buffer.from([0x33, 0xe6, 0x85, 0xa4, 0x01, 0x7f, 0x83, 0xad]),
+};
 
 const GRPC_URL = process.env.GRPC_URL!;
 const X_TOKEN = process.env.X_TOKEN!;
 const RPC_URL = process.env.SOLANA_RPC_PRIMARY!;
 const JITO_URL = "https://ny.mainnet.block-engine.jito.wtf/api/v1/transactions";
 const TRADER_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
-const PUMPFUN_TOKEN_PROGRAM = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"; // For token CREATION detection
 
 const keypairData = JSON.parse(readFileSync(TRADER_PATH, "utf-8"));
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
@@ -385,7 +398,7 @@ async function handleStream(client: Client) {
         vote: false,
         failed: false,
         signature: undefined,
-        accountInclude: [PUMPFUN_TOKEN_PROGRAM], // Use token program for CREATE detection
+        accountInclude: [CONFIG.PUMP_TOKEN_PROGRAM], // Use token program for CREATE detection
         accountExclude: [],
         accountRequired: [],
       },
