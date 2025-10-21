@@ -54,6 +54,10 @@ let totalBuyFees = 0;
 let totalSellReceived = 0;
 let totalSellFees = 0;
 
+// Cached values to avoid RPC calls
+let cachedBalance = 0;
+let cachedBlockhash: string | null = null;
+
 console.log("🧪 SIMPLE 5-SECOND HOLD TEST");
 console.log("============================\n");
 console.log(`Wallet: ${trader.publicKey.toBase58()}`);
@@ -130,9 +134,8 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
     return;
   }
   
-  // Safety check
-  const balance = await connection.getBalance(trader.publicKey);
-  const balanceSOL = balance / 1e9;
+  // Use cached balance (updated in background)
+  const balanceSOL = cachedBalance;
   
   if (balanceSOL < MIN_BALANCE_SOL) {
     console.log(`\n🛑 Balance too low (${balanceSOL.toFixed(4)} SOL), stopping`);
@@ -379,19 +382,40 @@ async function handleStream(client: Client) {
 }
 
 /**
+ * Background balance updater
+ */
+async function balanceUpdater() {
+  while (Date.now() < startTime + TEST_DURATION_MS + 60000) {
+    try {
+      const balance = await connection.getBalance(trader.publicKey);
+      cachedBalance = balance / 1e9;
+    } catch (e) {
+      console.error(`Balance update error: ${(e as Error).message}`);
+    }
+    await new Promise(r => setTimeout(r, 2000)); // Update every 2 seconds
+  }
+}
+
+/**
  * Main
  */
 async function main() {
+  // Initial balance check
+  const balance = await connection.getBalance(trader.publicKey);
+  cachedBalance = balance / 1e9;
+  console.log(`Starting balance: ${cachedBalance.toFixed(6)} SOL\n`);
+  
   const client = new Client(GRPC_URL, X_TOKEN, undefined);
 
-  // Start sell processor in background
+  // Start background tasks
+  const balanceTask = balanceUpdater();
   const sellTask = sellProcessor();
 
   // Run stream for 15 minutes
   await handleStream(client);
 
-  // Wait for sells to finish
-  await sellTask;
+  // Wait for background tasks to finish
+  await Promise.all([sellTask, balanceTask]);
 
   // Get final balance for accurate PNL
   const startBalance = await connection.getBalance(trader.publicKey);
