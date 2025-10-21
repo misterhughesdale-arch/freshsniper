@@ -376,6 +376,7 @@ async function handleStream(client: Client) {
       pumpfun: {
         vote: false,
         failed: false,
+        signature: undefined,
         accountInclude: [PUMPFUN_PROGRAM],
         accountExclude: [],
         accountRequired: [],
@@ -386,6 +387,7 @@ async function handleStream(client: Client) {
     blocks: {},
     blocksMeta: {},
     accountsDataSlice: [],
+    ping: undefined,
     commitment: CommitmentLevel.CONFIRMED,
   };
 
