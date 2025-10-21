@@ -259,13 +259,17 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
     
     // Check confirmation in background (non-blocking!)
     connection.confirmTransaction(signature, "confirmed").then((confirmation) => {
+      if (!confirmation || !confirmation.value) {
+        console.log(`   ⚠️  ${signature.slice(0, 8)}... no confirmation value`);
+        return;
+      }
       if (confirmation.value.err) {
         console.log(`   ❌ ${signature.slice(0, 8)}... FAILED: ${JSON.stringify(confirmation.value.err)}`);
       } else {
         console.log(`   ✅ ${signature.slice(0, 8)}... CONFIRMED - selling in 3s`);
       }
     }).catch(e => {
-      console.log(`   ⚠️  ${signature.slice(0, 8)}... confirmation check failed: ${e.message}`);
+      console.log(`   ⚠️  ${signature.slice(0, 8)}... confirmation error: ${e?.message || JSON.stringify(e)}`);
     });
     
     // Reclaim rent every 2 buys
