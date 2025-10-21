@@ -52,6 +52,7 @@ export interface BuyTransactionParams {
   connection: Connection;
   buyer: PublicKey;
   mint: PublicKey;
+  creator: PublicKey; // Pass creator from transaction, don't fetch!
   amountSol: number;
   slippageBps: number;
   priorityFeeLamports?: number;
@@ -83,7 +84,7 @@ export interface BuildTransactionResult {
  * Creates associated token account if needed, then executes buy instruction.
  */
 export async function buildBuyTransaction(params: BuyTransactionParams): Promise<BuildTransactionResult> {
-  const { connection, buyer, mint, amountSol, slippageBps, priorityFeeLamports = 10000, computeUnits = DEFAULT_COMPUTE_UNITS } = params;
+  const { connection, buyer, mint, creator, amountSol, slippageBps, priorityFeeLamports = 10000, computeUnits = DEFAULT_COMPUTE_UNITS } = params;
 
   const transaction = new Transaction();
 
@@ -104,12 +105,11 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
 
   // Derive all required PDAs
   const [bondingCurve] = deriveBondingCurvePDA(mint);
-  const associatedBondingCurve = deriveAssociatedBondingCurvePDA(mint); // Now returns PublicKey directly
+  const associatedBondingCurve = deriveAssociatedBondingCurvePDA(mint);
   const buyerTokenAccount = deriveAssociatedTokenAddress(buyer, mint, TOKEN_PROGRAM_ID);
   
-  // Fetch bonding curve state to get REAL creator
-  const curveState = await fetchBondingCurveState(connection, bondingCurve);
-  const [creatorVault] = deriveCreatorVaultPDA(curveState.creator);
+  // Use creator passed from params (extracted from transaction accountKeys[0])
+  const [creatorVault] = deriveCreatorVaultPDA(creator);
   
   // Derive volume and fee PDAs
   const [globalVolumeAccumulator] = deriveGlobalVolumeAccumulatorPDA();

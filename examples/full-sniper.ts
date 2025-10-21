@@ -126,20 +126,22 @@ async function sendViaJito(transaction: Transaction): Promise<string> {
 /**
  * Process detected token
  */
-async function processToken(mint: string, owner: string, receivedAt: number) {
+async function processToken(mint: string, owner: string, creator: string, receivedAt: number) {
   const mintPubkey = new PublicKey(mint);
+  const creatorPubkey = new PublicKey(creator);
   
   metrics.tokensDetected++;
   console.log(`\n🪙 TOKEN #${metrics.tokensDetected} - ${mint}`);
-  console.log(`   Owner: ${owner}`);
+  console.log(`   Owner: ${owner} | Creator: ${creator.slice(0, 8)}...`);
   
   try {
-    // 1. BUILD TRANSACTION
+    // 1. BUILD TRANSACTION (NO RPC - INSTANT!)
     const buildStart = Date.now();
     const { transaction } = await buildBuyTransaction({
       connection,
       buyer: trader.publicKey,
       mint: mintPubkey,
+      creator: creatorPubkey,
       amountSol: config.strategy.buy_amount_sol,
       slippageBps: config.strategy.max_slippage_bps,
       priorityFeeLamports: config.jito.priority_fee_lamports,
@@ -238,7 +240,7 @@ async function handleStream(client: Client, args: any) {
       
       // Process each token (async, don't block stream)
       for (const token of newTokens) {
-        processToken(token.mint, token.owner, receivedAt).catch(e => 
+        processToken(token.mint, token.owner, creator, receivedAt).catch(e => 
           console.error(`Token processing failed: ${e.message}`)
         );
       }

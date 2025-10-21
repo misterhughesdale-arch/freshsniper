@@ -58,6 +58,7 @@ export function buildBuyWorkflow(deps: WorkflowDeps): Workflow<BuyPayload> {
           connection,
           buyer: trader.publicKey,
           mint,
+          creator: trader.publicKey, // Fallback for hot-route (doesn't have stream context)
           amountSol,
           slippageBps,
           priorityFeeLamports: config.jito.priority_fee_lamports,
