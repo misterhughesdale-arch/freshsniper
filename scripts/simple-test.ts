@@ -330,7 +330,8 @@ async function handleStream(client: Client) {
       // Extract blockhash from stream (fresh, no RPC call needed!)
       const messageData = txInfo.message;
       if (messageData?.recentBlockhash) {
-        cachedBlockhash = Buffer.from(messageData.recentBlockhash).toString("base58");
+        const bs58 = await import("bs58");
+        cachedBlockhash = bs58.default.encode(Buffer.from(messageData.recentBlockhash));
       }
 
       // Extract new tokens
