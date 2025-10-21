@@ -336,10 +336,9 @@ async function handleStream(client: Client) {
       const meta = txInfo.meta ?? data.transaction.meta;
       if (!meta) return;
       
-      // Extract new tokens (simple detection like sdk-sniper.ts)
+      // Simple detection: just check if postTokenBalances exists and has mints
       const postBalances = meta.postTokenBalances || [];
-      const preBalances = meta.preTokenBalances || [];
-      const preMints = new Set(preBalances.map((b: any) => b.mint).filter(Boolean));
+      if (postBalances.length === 0) return;
       
       // Get creator from first account key
       const messageData = txInfo.message;
@@ -347,23 +346,24 @@ async function handleStream(client: Client) {
       if (!accountKeys || accountKeys.length === 0) return;
       const creator = String(accountKeys[0]);
 
-      const newTokens = postBalances
-        .filter((b: any) => b.mint && !preMints.has(b.mint))
-        .map((b: any) => b.mint);
-
-      if (newTokens.length === 0) return;
-      
-      tokensFiltered += newTokens.length;
-
       // Extract blockhash from stream (fresh, no RPC call needed!)
       if (messageData?.recentBlockhash) {
         const bs58 = await import("bs58");
         cachedBlockhash = bs58.default.encode(Buffer.from(messageData.recentBlockhash));
       }
 
-      for (const mint of newTokens) {
-        buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
-      }
+      // Get all mints from post balances
+      const newTokens = postBalances
+        .filter((b: any) => b.mint)
+        .map((b: any) => b.mint);
+
+      if (newTokens.length === 0) return;
+      
+      tokensFiltered += newTokens.length;
+
+      // Process first mint only (most likely the newly created token)
+      const mint = newTokens[0];
+      buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
 
     } catch (error) {
       console.error(`❌ Stream processing error: ${(error as Error).message}`);
@@ -390,7 +390,7 @@ async function handleStream(client: Client) {
     blocksMeta: {},
     accountsDataSlice: [],
     ping: undefined,
-    commitment: CommitmentLevel.CONFIRMED,
+    commitment: CommitmentLevel.PROCESSED, // Use PROCESSED for speed like working example
   };
 
   console.log("🔄 Subscribing to Pump.fun transactions...");
