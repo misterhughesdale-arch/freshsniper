@@ -17,6 +17,7 @@
     "emergency:sell": "tsx scripts/emergency-sell-all.ts",
     "recovery:reclaim": "tsx scripts/reclaim-ata-rent.ts",
     "info:positions": "tsx scripts/list-positions.ts",
+    "recovery:dust": "tsx scripts/dust-recovery.ts",
     "start:hot-route": "pnpm --filter hot-route-app dev",
     "dev:geyser": "pnpm --filter geyser-stream-service dev"
   },
