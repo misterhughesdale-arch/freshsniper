@@ -214,8 +214,6 @@ export async function buildSellTransaction(params: SellTransactionParams): Promi
     associatedBondingCurve,
     sellerTokenAccount,
     creatorVault,
-    globalVolumeAccumulator,
-    userVolumeAccumulator,
     feeConfig,
     tokenAmountRaw,
     minSolOutput,
@@ -302,11 +300,11 @@ function createBuyInstruction(params: {
 /**
  * Creates a sell instruction for Pump.fun
  * 
- * SELL has 16 accounts (SAME as buy - includes volume tracking):
+ * SELL has 14 accounts (NO volume tracking, creator_vault BEFORE token_program):
  * 0. global, 1. fee_recipient, 2. mint, 3. bonding_curve, 4. associated_bonding_curve,
- * 5. seller_token_account, 6. seller (signer), 7. system_program, 8. token_program,
- * 9. creator_vault, 10. event_authority, 11. program, 12. global_volume_accumulator,
- * 13. user_volume_accumulator, 14. fee_config, 15. fee_program
+ * 5. seller_token_account, 6. seller (signer), 7. system_program,  
+ * 8. creator_vault, 9. token_program, 10. event_authority, 11. program,
+ * 12. fee_config, 13. fee_program
  */
 function createSellInstruction(params: {
   seller: PublicKey;
@@ -315,41 +313,39 @@ function createSellInstruction(params: {
   associatedBondingCurve: PublicKey;
   sellerTokenAccount: PublicKey;
   creatorVault: PublicKey;
-  globalVolumeAccumulator: PublicKey;
-  userVolumeAccumulator: PublicKey;
   feeConfig: PublicKey;
   tokenAmountRaw: bigint;
   minSolOutput: bigint;
 }): TransactionInstruction {
   const { 
     seller, mint, bondingCurve, associatedBondingCurve, sellerTokenAccount,
-    creatorVault, globalVolumeAccumulator, userVolumeAccumulator, feeConfig,
+    creatorVault, feeConfig,
     tokenAmountRaw, minSolOutput 
   } = params;
 
   // Instruction data: discriminator + amount + min_sol_output
-  // NO track_volume parameter
   const data = Buffer.alloc(24);
   SELL_DISCRIMINATOR.copy(data, 0);
   data.writeBigUInt64LE(tokenAmountRaw, 8);
   data.writeBigUInt64LE(minSolOutput, 16);
 
+  // 14 accounts matching Python working bot (creator_vault at position 8, BEFORE token_program)
   return new TransactionInstruction({
     keys: [
-      { pubkey: PUMP_GLOBAL, isSigner: false, isWritable: false },
-      { pubkey: PUMP_FEE_RECIPIENT, isSigner: false, isWritable: true },
-      { pubkey: mint, isSigner: false, isWritable: false },
-      { pubkey: bondingCurve, isSigner: false, isWritable: true },
-      { pubkey: associatedBondingCurve, isSigner: false, isWritable: true },
-      { pubkey: sellerTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: seller, isSigner: true, isWritable: true },
-      { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: creatorVault, isSigner: false, isWritable: true }, // Position 9
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // Position 10
-      { pubkey: PUMP_EVENT_AUTHORITY, isSigner: false, isWritable: false },
-      { pubkey: PUMP_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: feeConfig, isSigner: false, isWritable: false },
-      { pubkey: PUMP_FEE_PROGRAM, isSigner: false, isWritable: false },
+      { pubkey: PUMP_GLOBAL, isSigner: false, isWritable: false }, // 0. global
+      { pubkey: PUMP_FEE_RECIPIENT, isSigner: false, isWritable: true }, // 1. fee_recipient
+      { pubkey: mint, isSigner: false, isWritable: false }, // 2. mint
+      { pubkey: bondingCurve, isSigner: false, isWritable: true }, // 3. bonding_curve
+      { pubkey: associatedBondingCurve, isSigner: false, isWritable: true }, // 4. associated_bonding_curve
+      { pubkey: sellerTokenAccount, isSigner: false, isWritable: true }, // 5. user_token_account
+      { pubkey: seller, isSigner: true, isWritable: true }, // 6. user (signer)
+      { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false }, // 7. system_program
+      { pubkey: creatorVault, isSigner: false, isWritable: true }, // 8. creator_vault (BEFORE token_program!)
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // 9. token_program
+      { pubkey: PUMP_EVENT_AUTHORITY, isSigner: false, isWritable: false }, // 10. event_authority
+      { pubkey: PUMP_PROGRAM_ID, isSigner: false, isWritable: false }, // 11. program
+      { pubkey: feeConfig, isSigner: false, isWritable: false }, // 12. fee_config
+      { pubkey: PUMP_FEE_PROGRAM, isSigner: false, isWritable: false }, // 13. fee_program
     ],
     programId: PUMP_PROGRAM_ID,
     data,
