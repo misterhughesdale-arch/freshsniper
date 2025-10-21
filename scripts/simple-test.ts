@@ -343,7 +343,7 @@ async function handleStream(client: Client) {
       const message = dataTx.transaction?.message;
       if (!message || !message.instructions || message.instructions.length === 0) return;
       
-      // Find CREATE instruction and extract creator from instruction DATA
+      // Find CREATE instruction and get creator from ACCOUNTS (index 7 = user/creator)
       const bs58 = await import("bs58");
       const CREATE_DISCRIMINATOR = Buffer.from([181, 157, 89, 15, 12, 94, 60, 216]);
       let creator: string | null = null;
@@ -353,29 +353,13 @@ async function handleStream(client: Client) {
         const ixData = Buffer.from(ix.data);
         
         if (ixData.slice(0, 8).equals(CREATE_DISCRIMINATOR)) {
-          // Parse CREATE instruction data:
-          // 8 bytes: discriminator
-          // 4 bytes: name length + name string
-          // 4 bytes: symbol length + symbol string  
-          // 4 bytes: uri length + uri string
-          // 32 bytes: creator pubkey
-          let offset = 8;
+          // Get creator from instruction accounts (index 7 = user/creator)
+          if (!ix.accounts || ix.accounts.length < 8) continue;
+          const creatorAccountIndex = ix.accounts[7];
+          if (!message.accountKeys || message.accountKeys.length <= creatorAccountIndex) continue;
           
-          // Skip name
-          const nameLen = ixData.readUInt32LE(offset);
-          offset += 4 + nameLen;
-          
-          // Skip symbol
-          const symbolLen = ixData.readUInt32LE(offset);
-          offset += 4 + symbolLen;
-          
-          // Skip uri
-          const uriLen = ixData.readUInt32LE(offset);
-          offset += 4 + uriLen;
-          
-          // Read creator (32 bytes)
-          const creatorBytes = ixData.slice(offset, offset + 32);
-          creator = bs58.default.encode(creatorBytes);
+          const creatorBytes = message.accountKeys[creatorAccountIndex];
+          creator = bs58.default.encode(Buffer.from(creatorBytes));
           break;
         }
       }
