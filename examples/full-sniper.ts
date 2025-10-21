@@ -243,14 +243,7 @@ async function handleStream(client: Client, args: any) {
       const preMints = new Set(preBalances.map((b: any) => b.mint).filter(Boolean));
       
       const newTokens = postBalances
-        .filter((b: any) => {
-          if (!b.mint || preMints.has(b.mint)) return false;
-          // Filter out native SOL
-          if (b.mint === "So11111111111111111111111111111111111111112") return false;
-          // Only pump.fun tokens
-          if (!b.mint.endsWith("pump")) return false;
-          return true;
-        })
+        .filter((b: any) => b.mint && !preMints.has(b.mint))
         .map((b: any) => ({
           mint: b.mint,
           owner: b.owner || "unknown",
