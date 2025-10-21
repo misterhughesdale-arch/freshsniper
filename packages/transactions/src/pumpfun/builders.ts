@@ -104,18 +104,10 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
     );
   }
 
-  // Derive all required PDAs
+  // Derive required PDAs (ONLY those needed by v0.1.0 IDL)
   const [bondingCurve] = deriveBondingCurvePDA(mint);
   const associatedBondingCurve = deriveAssociatedBondingCurvePDA(mint);
   const buyerTokenAccount = deriveAssociatedTokenAddress(buyer, mint, TOKEN_PROGRAM_ID);
-  
-  // Use creator passed from params (extracted from transaction accountKeys[0])
-  const [creatorVault] = deriveCreatorVaultPDA(creator);
-  
-  // Derive volume and fee PDAs
-  const [globalVolumeAccumulator] = deriveGlobalVolumeAccumulatorPDA();
-  const [userVolumeAccumulator] = deriveUserVolumeAccumulatorPDA(buyer);
-  const [feeConfig] = deriveFeeConfigPDA();
 
   // Create associated token account instruction (idempotent)
   const createAtaInstruction = createAssociatedTokenAccountIdempotentInstruction(
@@ -138,10 +130,6 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
     bondingCurve,
     associatedBondingCurve,
     buyerTokenAccount,
-    creatorVault,
-    globalVolumeAccumulator,
-    userVolumeAccumulator,
-    feeConfig,
     tokenAmount, // Request 100k tokens
     maxSolCost, // Limit spend to actual SOL amount
   });
@@ -255,44 +243,35 @@ function createBuyInstruction(params: {
   bondingCurve: PublicKey;
   associatedBondingCurve: PublicKey;
   buyerTokenAccount: PublicKey;
-  creatorVault: PublicKey;
-  globalVolumeAccumulator: PublicKey;
-  userVolumeAccumulator: PublicKey;
-  feeConfig: PublicKey;
-  tokenAmount: bigint; // FIXED: This should be token amount, not SOL amount
+  tokenAmount: bigint;
   maxSolCost: bigint;
 }): TransactionInstruction {
   const {
     buyer, mint, bondingCurve, associatedBondingCurve, buyerTokenAccount,
-    creatorVault, globalVolumeAccumulator, userVolumeAccumulator, feeConfig,
     tokenAmount, maxSolCost 
   } = params;
 
-  // Instruction data: discriminator + token_amount + max_sol_cost
-  // NO track_volume parameter - that was removed in recent version
+  // Instruction data: discriminator + amount + maxSolCost (from IDL v0.1.0)
   const data = Buffer.alloc(24);
   BUY_DISCRIMINATOR.copy(data, 0);
   data.writeBigUInt64LE(tokenAmount, 8);
   data.writeBigUInt64LE(maxSolCost, 16);
 
+  // 12 accounts as per IDL v0.1.0
   return new TransactionInstruction({
     keys: [
-      { pubkey: PUMP_GLOBAL, isSigner: false, isWritable: false },
-      { pubkey: PUMP_FEE_RECIPIENT, isSigner: false, isWritable: true },
-      { pubkey: mint, isSigner: false, isWritable: false },
-      { pubkey: bondingCurve, isSigner: false, isWritable: true },
-      { pubkey: associatedBondingCurve, isSigner: false, isWritable: true },
-      { pubkey: buyerTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: buyer, isSigner: true, isWritable: true },
-      { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: creatorVault, isSigner: false, isWritable: true },
-      { pubkey: PUMP_EVENT_AUTHORITY, isSigner: false, isWritable: false },
-      { pubkey: PUMP_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: globalVolumeAccumulator, isSigner: false, isWritable: true },
-      { pubkey: userVolumeAccumulator, isSigner: false, isWritable: true },
-      { pubkey: feeConfig, isSigner: false, isWritable: false },
-      { pubkey: PUMP_FEE_PROGRAM, isSigner: false, isWritable: false },
+      { pubkey: PUMP_GLOBAL, isSigner: false, isWritable: false }, // 0. global
+      { pubkey: PUMP_FEE_RECIPIENT, isSigner: false, isWritable: true }, // 1. feeRecipient
+      { pubkey: mint, isSigner: false, isWritable: false }, // 2. mint
+      { pubkey: bondingCurve, isSigner: false, isWritable: true }, // 3. bondingCurve
+      { pubkey: associatedBondingCurve, isSigner: false, isWritable: true }, // 4. associatedBondingCurve
+      { pubkey: buyerTokenAccount, isSigner: false, isWritable: true }, // 5. associatedUser
+      { pubkey: buyer, isSigner: true, isWritable: true }, // 6. user (signer)
+      { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false }, // 7. systemProgram
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // 8. tokenProgram
+      { pubkey: new PublicKey("SysvarRent111111111111111111111111111111111"), isSigner: false, isWritable: false }, // 9. rent
+      { pubkey: PUMP_EVENT_AUTHORITY, isSigner: false, isWritable: false }, // 10. eventAuthority
+      { pubkey: PUMP_PROGRAM_ID, isSigner: false, isWritable: false }, // 11. program
     ],
     programId: PUMP_PROGRAM_ID,
     data,
