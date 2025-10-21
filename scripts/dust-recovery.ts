@@ -76,13 +76,17 @@ async function main() {
   // Strategy: Sell ONE token at a time, then close its ATA immediately
   // This maximizes rent recovery before next transaction
   
-  let totalRecovered = 0;
+  let totalSellProceeds = 0;
+  let totalRentRecovered = 0;
   let sellCount = 0;
   let closeCount = 0;
 
   for (const token of toSell) {
     try {
       console.log(`\n${sellCount + 1}. Selling ${token.mint.slice(0, 8)}... (${token.balance.toLocaleString()} tokens)`);
+
+      // Check balance BEFORE
+      const balanceBefore = await connection.getBalance(trader.publicKey);
 
       // Check if bonding curve exists (token might be graduated or sold out)
       const mintPubkey = new PublicKey(token.mint);
@@ -135,10 +139,21 @@ async function main() {
       if (confirmation.value.err) {
         console.log(`   ❌ Failed: ${JSON.stringify(confirmation.value.err)}`);
       } else {
-        console.log(`   ✅ Confirmed! Recovered ~0.00203 SOL rent`);
+        // Check balance AFTER
+        const balanceAfter = await connection.getBalance(trader.publicKey);
+        const netChange = (balanceAfter - balanceBefore) / 1e9;
+        const sellProceeds = netChange - 0.00203; // Subtract rent, rest is from sell
+        const rentRecovered = 0.00203;
+        
+        console.log(`   ✅ Confirmed!`);
+        console.log(`      Sell proceeds: ${sellProceeds.toFixed(6)} SOL`);
+        console.log(`      Rent recovered: ${rentRecovered.toFixed(6)} SOL`);
+        console.log(`      Total: ${netChange.toFixed(6)} SOL`);
+        
         sellCount++;
         closeCount++;
-        totalRecovered += 0.00203;
+        totalSellProceeds += sellProceeds;
+        totalRentRecovered += rentRecovered;
       }
 
       // Small delay to avoid rate limits
@@ -207,7 +222,9 @@ async function main() {
   console.log(`===================`);
   console.log(`Tokens sold: ${sellCount}`);
   console.log(`ATAs closed: ${closeCount}`);
-  console.log(`Rent recovered: ${totalRecovered.toFixed(6)} SOL`);
+  console.log(`Sell proceeds: ${totalSellProceeds.toFixed(6)} SOL`);
+  console.log(`Rent recovered: ${totalRentRecovered.toFixed(6)} SOL`);
+  console.log(`Total recovered: ${(totalSellProceeds + totalRentRecovered).toFixed(6)} SOL`);
   console.log(`Starting balance: ${solBalance.toFixed(6)} SOL`);
   console.log(`Final balance: ${finalSol.toFixed(6)} SOL`);
   console.log(`Net change: ${(finalSol - solBalance).toFixed(6)} SOL`);
