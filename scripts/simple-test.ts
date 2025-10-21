@@ -349,6 +349,15 @@ async function handleStream(client: Client) {
       const CREATE_DISCRIMINATOR = Buffer.from([181, 157, 89, 15, 12, 94, 60, 216]);
       let creator: string | null = null;
       
+      // Debug: Log first instruction discriminator every 50 events
+      if (eventsReceived % 50 === 0 && message.instructions.length > 0) {
+        const firstIx = message.instructions[0];
+        if (firstIx.data && firstIx.data.length >= 8) {
+          const disc = Buffer.from(firstIx.data).slice(0, 8);
+          console.log(`   🔍 Sample discriminator: ${disc.toString('hex')} (${disc.length} bytes)`);
+        }
+      }
+      
       for (const ix of message.instructions) {
         if (!ix.data || ix.data.length < 8) continue;
         const ixData = Buffer.from(ix.data);
