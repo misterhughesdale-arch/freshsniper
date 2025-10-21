@@ -84,6 +84,21 @@ async function main() {
     try {
       console.log(`\n${sellCount + 1}. Selling ${token.mint.slice(0, 8)}... (${token.balance.toLocaleString()} tokens)`);
 
+      // Check if bonding curve exists (token might be graduated or sold out)
+      const mintPubkey = new PublicKey(token.mint);
+      const [bondingCurve] = PublicKey.findProgramAddressSync(
+        [Buffer.from("bonding-curve"), mintPubkey.toBuffer()],
+        new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P")
+      );
+      
+      const curveAccount = await connection.getAccountInfo(bondingCurve);
+      if (!curveAccount) {
+        console.log(`   ⏭️  Skipped: Bonding curve graduated/missing (token on Raydium?)`);
+        // Just close the ATA to reclaim rent
+        toClose.push({ mint: token.mint, ata: token.ata });
+        continue;
+      }
+
       // Build sell transaction
       const { transaction } = await buildSellTransaction({
         connection,
