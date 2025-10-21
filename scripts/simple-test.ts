@@ -442,7 +442,7 @@ async function handleStream(client: Client) {
     }
   });
 
-  // Subscribe to bonding curve ACCOUNT creations (faster than transaction stream)
+  // Subscribe to BOTH accounts AND transactions (like working sniper)
   const request = {
     accounts: {
       bondingCurves: {
@@ -452,7 +452,16 @@ async function handleStream(client: Client) {
       },
     },
     slots: {},
-    transactions: {},
+    transactions: {
+      pumpfun: {
+        vote: false,
+        failed: false,
+        signature: undefined,
+        accountInclude: [CONFIG.PUMP_PROGRAM.toBase58()],
+        accountExclude: [],
+        accountRequired: [],
+      },
+    },
     transactionsStatus: {},
     entry: {},
     blocks: {},
@@ -462,7 +471,7 @@ async function handleStream(client: Client) {
     accountsDataSlice: [
       {
         offset: "0",
-        length: "100", // First 100 bytes (includes creator at offset 49)
+        length: "100",
       },
     ],
     ping: undefined,
