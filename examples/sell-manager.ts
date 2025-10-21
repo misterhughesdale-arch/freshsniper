@@ -25,8 +25,10 @@ const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
 console.log("🎯 SELL MANAGER - Auto-sell on activity");
 console.log("========================================\n");
 console.log(`Trader: ${trader.publicKey.toBase58()}`);
-console.log(`Strategy: ${config.strategy.auto_sell?.strategy || "time_based"}`);
-console.log(`Hold time: ${config.strategy.auto_sell?.hold_time_seconds || 60}s\n`);
+
+const autoSellCfg = (config.strategy as any).auto_sell || {};
+console.log(`Strategy: ${autoSellCfg.strategy || "time_based"}`);
+console.log(`Hold time: ${autoSellCfg.hold_time_seconds || 60}s\n`);
 
 interface Position {
   mint: PublicKey;
@@ -148,11 +150,11 @@ function addPosition(mint: PublicKey, creator: PublicKey, buySignature: string) 
 }
 
 /**
- * Handle Geyser stream - looking for OTHER PEOPLE's buys on OUR positions
+ * Handle Geyser stream - filter for OUR WALLET transactions
  */
 async function handleStream(client: Client) {
   const stream = await client.subscribe();
-  console.log("✅ Stream connected - monitoring for activity on positions\n");
+  console.log("✅ Stream connected - filtering for your wallet transactions\n");
 
   stream.on("data", async (data) => {
     try {
@@ -162,35 +164,56 @@ async function handleStream(client: Client) {
       const meta = txInfo.meta ?? data.transaction.meta;
       if (!meta) return;
 
-      // Look for token balance changes
+      // Check if this transaction involves our wallet
       const postBalances = meta.postTokenBalances || [];
+      const preBalances = meta.preTokenBalances || [];
       
-      for (const balance of postBalances) {
-        if (!balance.mint) continue;
-
-        const position = positions.get(balance.mint);
-        if (!position || position.otherBuysDetected) continue;
-
-        // Someone bought our token! Sell immediately
-        position.otherBuysDetected = true;
-        console.log(`\n📈 Activity detected on ${balance.mint.slice(0, 8)}...`);
-        clearTimeout(position.sellTimer);
-        executeSell(balance.mint, "other buy detected").catch(console.error);
+      // Look for OUR buys (we're the owner in post but not pre)
+      for (const postBal of postBalances) {
+        if (!postBal.mint || postBal.owner !== trader.publicKey.toBase58()) continue;
+        
+        const hadBefore = preBalances.some((pre: any) => pre.mint === postBal.mint && pre.owner === trader.publicKey.toBase58());
+        
+        if (!hadBefore) {
+          // NEW position - we just bought this
+          const mint = new PublicKey(postBal.mint);
+          
+          // Extract creator from transaction
+          const accountKeys = txInfo.message?.accountKeys;
+          const creator = accountKeys && accountKeys.length > 0 ? new PublicKey(accountKeys[0]) : mint;
+          
+          // Get signature
+          const signature = txInfo.signature ? Buffer.from(txInfo.signature).toString('base64') : 'unknown';
+          
+          console.log(`\n🆕 Detected OUR buy: ${postBal.mint.slice(0, 8)}...`);
+          addPosition(mint, creator, signature);
+        } else if (positions.has(postBal.mint)) {
+          // We have a position and there's activity
+          const position = positions.get(postBal.mint)!;
+          
+          if (!position.otherBuysDetected) {
+            position.otherBuysDetected = true;
+            console.log(`\n📈 Activity on ${postBal.mint.slice(0, 8)}... - someone else buying!`);
+            clearTimeout(position.sellTimer);
+            executeSell(postBal.mint, "other buy detected").catch(console.error);
+          }
+        }
       }
     } catch (error) {
       // Silent
     }
   });
 
+  // Subscribe to transactions involving OUR WALLET
   const request: any = {
     accounts: {},
     slots: {},
     transactions: {
-      pumpfun: {
+      our_wallet: {
         vote: false,
         failed: false,
         signature: undefined,
-        accountInclude: [PUMPFUN_PROGRAM],
+        accountInclude: [trader.publicKey.toBase58()], // Filter for our wallet!
         accountExclude: [],
         accountRequired: [],
       },
@@ -214,18 +237,9 @@ async function handleStream(client: Client) {
 async function main() {
   const client = new Client(config.geyser.endpoint, config.geyser.auth_token, undefined);
   
-  // TODO: Load existing positions from storage/database
-  // For now, manually add positions from command line
-  const args = process.argv.slice(2);
-  if (args.length > 0) {
-    console.log("Adding positions from command line:\n");
-    for (let i = 0; i < args.length; i += 2) {
-      const mintStr = args[i];
-      const creatorStr = args[i + 1] || mintStr; // Use mint as creator if not provided
-      addPosition(new PublicKey(mintStr), new PublicKey(creatorStr), "manual");
-    }
-    console.log();
-  }
+  console.log("🔍 Monitoring Geyser for transactions involving your wallet...");
+  console.log("   Will detect your buys and track positions automatically");
+  console.log("   Will sell when other buys detected or timer expires\n");
   
   await handleStream(client);
 }
