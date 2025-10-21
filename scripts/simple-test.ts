@@ -319,54 +319,42 @@ async function handleStream(client: Client) {
     console.error("❌ Stream error:", error);
   });
 
-  // Handle data
+  // Handle data (exact logic from working example)
   stream.on("data", async (data) => {
     eventsReceived++;
     if (eventsReceived % 100 === 0) {
-      console.log(`📊 Events: ${eventsReceived}, Tokens: ${tokensFiltered}, Detected: ${tokensDetected}`);
+      console.log(`📊 Events: ${eventsReceived}, Detected: ${tokensDetected}`);
     }
     
     const receivedAt = Date.now();
     if (receivedAt > startTime + TEST_DURATION_MS) return; // Stop after 15 min
 
     try {
-      if (!data?.transaction) return;
-
-      const txInfo = data.transaction.transaction ?? data.transaction;
-      const meta = txInfo.meta ?? data.transaction.meta;
-      if (!meta) return;
+      // Exact structure from working example
+      const dataTx = data.transaction.transaction;
+      const meta = dataTx?.meta;
+      if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
       
-      // Simple detection: just check if postTokenBalances exists and has mints
-      const postBalances = meta.postTokenBalances || [];
-      if (postBalances.length === 0) return;
+      // Get first mint (exact logic from working example)
+      const mint = meta.postTokenBalances[0].mint;
+      if (!mint) return;
       
       // Get creator from first account key
-      const messageData = txInfo.message;
-      const accountKeys = messageData?.accountKeys;
-      if (!accountKeys || accountKeys.length === 0) return;
-      const creator = String(accountKeys[0]);
+      const message = dataTx.transaction?.message;
+      if (!message || !message.accountKeys || message.accountKeys.length === 0) return;
+      const creator = String(message.accountKeys[0]);
 
-      // Extract blockhash from stream (fresh, no RPC call needed!)
-      if (messageData?.recentBlockhash) {
+      // Extract blockhash from stream
+      if (message?.recentBlockhash) {
         const bs58 = await import("bs58");
-        cachedBlockhash = bs58.default.encode(Buffer.from(messageData.recentBlockhash));
+        cachedBlockhash = bs58.default.encode(Buffer.from(message.recentBlockhash));
       }
 
-      // Get all mints from post balances
-      const newTokens = postBalances
-        .filter((b: any) => b.mint)
-        .map((b: any) => b.mint);
-
-      if (newTokens.length === 0) return;
-      
-      tokensFiltered += newTokens.length;
-
-      // Process first mint only (most likely the newly created token)
-      const mint = newTokens[0];
+      // Process token
       buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
 
     } catch (error) {
-      console.error(`❌ Stream processing error: ${(error as Error).message}`);
+      // Silent like working example
     }
   });
 
