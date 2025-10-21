@@ -347,6 +347,19 @@ async function handleStream(client: Client) {
         .filter((b: any) => b.mint && !preMints.has(b.mint))
         .map((b: any) => b.mint);
 
+      // Extract creator (first account key)
+      const accountKeys = txInfo.message?.accountKeys;
+      if (!accountKeys || accountKeys.length === 0) return;
+      
+      const creatorBytes = accountKeys[0];
+      const creator = typeof creatorBytes === 'string' ? creatorBytes : bs58.encode(Buffer.from(creatorBytes));
+      
+      // Skip blacklisted creators
+      if (blacklistedCreators.has(creator)) {
+        console.log(`⛔ Skipping blacklisted creator: ${creator.slice(0, 8)}...`);
+        return;
+      }
+
       for (const mint of newTokens) {
         buyToken(mint, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
       }
