@@ -141,7 +141,7 @@ async function main() {
       tx.feePayer = trader.publicKey;
       tx.sign(trader);
 
-      const signature = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: false });
+      const signature = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true });
       console.log(`   📤 Sent: ${signature.slice(0, 16)}...`);
 
       const confirmation = await connection.confirmTransaction(signature, "confirmed");

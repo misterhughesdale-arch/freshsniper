@@ -77,6 +77,8 @@ async function main() {
 
       // Sign and send
       transaction.sign(trader);
+      // Sign and send (no simulation for speed)
+      transaction.sign(trader);
       const signature = await sendViaJito(transaction.serialize());
 
       console.log(`   ✅ Sent: ${signature.slice(0, 16)}...`);

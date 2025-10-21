@@ -128,7 +128,7 @@ async function main() {
       // Sign and send
       transaction.sign(trader);
       const signature = await connection.sendRawTransaction(transaction.serialize(), {
-        skipPreflight: false,
+        skipPreflight: true,
       });
 
       console.log(`   📤 Sent: ${signature.slice(0, 16)}...`);
