@@ -19,16 +19,17 @@ import { buildSellTransaction } from "../packages/transactions/src/pumpfun/build
 const PUMPFUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
 
 const config = loadConfig();
-const keypairData = JSON.parse(readFileSync(config.trader.keypair_path, "utf-8"));
+const TRADER_KEYPAIR_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
+const keypairData = JSON.parse(readFileSync(TRADER_KEYPAIR_PATH, "utf-8"));
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
 
 console.log("🎯 SELL MANAGER - Auto-sell on activity");
 console.log("========================================\n");
 console.log(`Trader: ${trader.publicKey.toBase58()}`);
 
-const autoSellCfg = (config.strategy as any).auto_sell || {};
-console.log(`Strategy: ${autoSellCfg.strategy || "time_based"}`);
-console.log(`Hold time: ${autoSellCfg.hold_time_seconds || 60}s\n`);
+const autoSellCfg = (config.strategy as any).auto_sell || { strategy: "time_based", hold_time_seconds: 60 };
+console.log(`Strategy: ${autoSellCfg.strategy}`);
+console.log(`Hold time: ${autoSellCfg.hold_time_seconds}s\n`);
 
 interface Position {
   mint: PublicKey;
@@ -104,8 +105,8 @@ async function executeSell(mintStr: string, reason: string) {
       seller: trader.publicKey,
       mint: position.mint,
       tokenAmount: balance,
-      slippageBps: config.strategy.auto_sell?.sell_slippage_bps || 1000,
-      priorityFeeLamports: config.strategy.auto_sell?.sell_priority_fee || 5000000,
+      slippageBps: autoSellCfg.sell_slippage_bps || 1000,
+      priorityFeeLamports: autoSellCfg.sell_priority_fee || 5000000,
     });
 
     transaction.sign(trader);
@@ -131,7 +132,7 @@ function addPosition(mint: PublicKey, creator: PublicKey, buySignature: string) 
   const mintStr = mint.toBase58();
   
   // Set auto-sell timer
-  const holdTimeMs = (config.strategy.auto_sell?.hold_time_seconds || 60) * 1000;
+  const holdTimeMs = (autoSellCfg.hold_time_seconds || 60) * 1000;
   const sellTimer = setTimeout(() => {
     executeSell(mintStr, "timer expired").catch(console.error);
   }, holdTimeMs);
