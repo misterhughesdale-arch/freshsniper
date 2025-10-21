@@ -157,22 +157,7 @@ async function processToken(mint: string, owner: string, receivedAt: number) {
     metrics.txBuilt++;
     console.log(`   ⚙️  Built: ${buildTime}ms | Tip: ${config.jito.priority_fee_lamports} lamports`);
     
-    // 2. SIMULATE
-    const simStart = Date.now();
-    const simulation = await connection.simulateTransaction(transaction);
-    const simTime = Date.now() - simStart;
-    metrics.txSimulated++;
-    
-    if (simulation.value.err) {
-      metrics.simFailed++;
-      console.log(`   ❌ Sim failed: ${JSON.stringify(simulation.value.err)}`);
-      return;
-    }
-    
-    metrics.simSuccess++;
-    console.log(`   ✅ Sim OK: ${simTime}ms | Units: ${simulation.value.unitsConsumed}`);
-    
-    // 3. SIGN
+    // 2. SIGN (skip simulation for max speed)
     transaction.sign(trader);
     
     // 4. SEND VIA JITO
