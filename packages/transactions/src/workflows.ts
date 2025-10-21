@@ -140,10 +140,18 @@ export function buildSellWorkflow(deps: WorkflowDeps): Workflow<SellPayload> {
 
         // Build transaction
         const buildStart = Date.now();
+        
+        // For sell workflow, we need to fetch creator since we don't have it stored
+        const { fetchBondingCurveState } = await import("./pumpfun/curve-parser");
+        const { deriveBondingCurvePDA } = await import("./pumpfun/pdas");
+        const [bondingCurve] = deriveBondingCurvePDA(mint);
+        const curveState = await fetchBondingCurveState(connection, bondingCurve);
+        
         const { transaction, metadata } = await buildSellTransaction({
           connection,
           seller: trader.publicKey,
           mint,
+          creator: curveState.creator,
           tokenAmount,
           slippageBps,
           priorityFeeLamports: config.jito.priority_fee_lamports,
