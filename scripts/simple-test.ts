@@ -15,8 +15,6 @@ import Client, {
   CommitmentLevel,
 } from "@triton-one/yellowstone-grpc";
 import { buildBuyTransaction, buildSellTransaction } from "@fresh-sniper/transactions";
-import { searcherClient } from "jito-ts/dist/sdk/block-engine/searcher";
-import { Bundle } from "jito-ts/dist/sdk/block-engine/types";
 
 // Test configuration
 const TEST_DURATION_MS = 15 * 60 * 1000; // 15 minutes
@@ -25,28 +23,12 @@ const SELL_DELAY_MS = 3000; // 3 seconds
 const BUY_COOLDOWN_MS = 20000; // 20 seconds between buys
 const MIN_BALANCE_SOL = 0.05; // Stop if balance drops below this
 const JITO_TIP_LAMPORTS = 10000; // 10k lamports tip for Jito
-const BUY_PRIORITY_FEE = 33333; // microLamports per CU
+const BUY_PRIORITY_FEE = 5000000; // 5M microLamports for reliable landing
 
 const CONFIG = {
   PUMP_PROGRAM: new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"),
   PUMP_TOKEN_PROGRAM: new PublicKey("TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM"),
 };
-
-// Jito tip accounts
-const JITO_TIP_ACCOUNTS = [
-  "96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5",
-  "HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe",
-  "Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY",
-  "ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49",
-  "DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh",
-  "ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt",
-  "DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL",
-  "3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT",
-].map((a) => new PublicKey(a));
-
-function getRandomJitoTipAccount(): PublicKey {
-  return JITO_TIP_ACCOUNTS[Math.floor(Math.random() * JITO_TIP_ACCOUNTS.length)];
-}
 
 // State tracking
 let cachedBlockhash: string | null = null;
@@ -56,23 +38,9 @@ let tokensDetected = 0;
 let buyAttempts = 0;
 let startTime = Date.now();
 
-async function sendBundleViaJito(
-  bundleTransactions: Buffer[],
-  jitoClient: ReturnType<typeof searcherClient>,
-): Promise<string> {
-  try {
-    const bundle = new Bundle(bundleTransactions, bundleTransactions.length);
-    const bundleId = await jitoClient.sendBundle(bundle);
-    return bundleId;
-  } catch (error) {
-    throw new Error(`Jito bundle send failed: ${(error as Error).message}`);
-  }
-}
-
 async function buyToken(
   connection: Connection,
   trader: Keypair,
-  jitoClient: ReturnType<typeof searcherClient>,
   mintStr: string,
   creatorStr: string,
 ) {
@@ -97,21 +65,13 @@ async function buyToken(
       blockhash: cachedBlockhash,
     });
 
-    // Add Jito tip
-    const tipAccount = getRandomJitoTipAccount();
-    transaction.add(
-      SystemProgram.transfer({
-        fromPubkey: trader.publicKey,
-        toPubkey: tipAccount,
-        lamports: JITO_TIP_LAMPORTS,
-      }),
-    );
-
     transaction.sign(trader);
 
-    // Send via Jito
-    const bundleId = await sendBundleViaJito([transaction.serialize()], jitoClient);
-    console.log(`   ✅ BUY (Jito): ${bundleId.slice(0, 16)}...`);
+    const sig = await connection.sendRawTransaction(transaction.serialize(), {
+      skipPreflight: true,
+      maxRetries: 0,
+    });
+    console.log(`   ✅ BUY: ${sig.slice(0, 16)}...`);
 
     // Schedule sell
     setTimeout(() => sellToken(connection, trader, mintStr, creatorStr), SELL_DELAY_MS);
@@ -177,12 +137,6 @@ async function main() {
   const connection = new Connection(rpcUrl);
   const trader = Keypair.fromSecretKey(bs58.decode(process.env.WALLET_PRIVATE_KEY!));
 
-  // Initialize Jito client
-  const jitoClient = searcherClient(
-    process.env.BLOCK_ENGINE_URL || "https://mainnet.block-engine.jito.wtf",
-    trader,
-  );
-
   const balance = await connection.getBalance(trader.publicKey);
   console.log(`\n💰 Balance: ${(balance / LAMPORTS_PER_SOL).toFixed(4)} SOL`);
   console.log(`🔧 Test: ${TEST_DURATION_MS / 60000} min, ${BUY_AMOUNT} SOL/buy, ${SELL_DELAY_MS}ms hold, ${BUY_COOLDOWN_MS / 1000}s cooldown\n`);
@@ -238,7 +192,7 @@ async function main() {
       buyAttempts++;
       lastBuyTime = now;
 
-      buyToken(connection, trader, jitoClient, mintStr, creator);
+      buyToken(connection, trader, mintStr, creator);
     } catch {}
   });
 
