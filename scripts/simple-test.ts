@@ -22,7 +22,7 @@ import BN from "bn.js";
 
 const CONFIG = {
   PUMP_PROGRAM: new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"),
-  PUMP_TOKEN_PROGRAM: ": 3JEC4UjwNC4YbxxNxzU91yxEPgnV3uoCRtqDWacLrBoFmqB5kXLVv88yvJ2yAMLWcCojcWtTzy
+  PUMP_TOKEN_PROGRAM: new PublicKey("3JEC4UjwNC4YbxxNxzU91yxEPgnV3uoCRtqDWacLrBoFmqB5kXLVv88yvJ2yAMLWcCojcWtTzyR"),
   PUMP_GLOBAL: new PublicKey("4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf"),
   PUMP_FEE_RECIPIENT: new PublicKey("CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM"),
   PUMP_EVENT_AUTHORITY: new PublicKey("Ce6TQqeHC9p8KetsN6JsjHK7UTZk7nasjjnr7XxXp9F1"),
@@ -449,7 +449,7 @@ async function handleStream(client: Client) {
         vote: false,
         failed: false,
         signature: undefined,
-        accountInclude: ["6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"], // Main program - gets ALL txs
+        accountInclude: [CONFIG.PUMP_TOKEN_PROGRAM.toBase58()], // Token program for CREATE detection
         accountExclude: [],
         accountRequired: [],
       },
