@@ -192,15 +192,13 @@ export async function buildSellTransaction(params: SellTransactionParams): Promi
     );
   }
 
-  // Derive PDAs - NO RPC CALLS!
+  // Derive PDAs - NO RPC CALLS! (14 accounts for SELL, no volume accumulators)
   const [bondingCurve] = deriveBondingCurvePDA(mint);
   const associatedBondingCurve = deriveAssociatedBondingCurvePDA(mint);
   const sellerTokenAccount = deriveAssociatedTokenAddress(seller, mint, TOKEN_PROGRAM_ID);
   
   // Use creator passed from params (same one from buy)
   const [creatorVault] = deriveCreatorVaultPDA(creator);
-  const [globalVolumeAccumulator] = deriveGlobalVolumeAccumulatorPDA();
-  const [userVolumeAccumulator] = deriveUserVolumeAccumulatorPDA(seller);
   const [feeConfig] = deriveFeeConfigPDA();
 
   // Build sell instruction (14 accounts - no volume tracking in instruction itself)
