@@ -415,8 +415,12 @@ async function handleStream(client: Client) {
       
       const message = dataTx.transaction?.message;
       const accountKeys = message?.accountKeys;
+      
+      if (eventsReceived % 50 === 0) {
+        console.log(`   Debug: message=${!!message}, accountKeys=${accountKeys?.length || 0}`);
+      }
+      
       if (!accountKeys || accountKeys.length === 0) {
-        if (eventsReceived % 50 === 0) console.log(`   Debug: No accountKeys`);
         return;
       }
       
