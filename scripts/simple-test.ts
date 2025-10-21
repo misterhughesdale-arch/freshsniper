@@ -158,6 +158,7 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
       amountSol: BUY_AMOUNT,
       slippageBps: 500,
       priorityFeeLamports: BUY_PRIORITY_FEE,
+      blockhash: cachedBlockhash || undefined, // Use blockhash from stream
     });
     
     transaction.sign(trader);
@@ -325,6 +326,12 @@ async function handleStream(client: Client) {
       const txInfo = data.transaction.transaction ?? data.transaction;
       const meta = txInfo.meta ?? data.transaction.meta;
       if (!meta) return;
+      
+      // Extract blockhash from stream (fresh, no RPC call needed!)
+      const messageData = txInfo.message;
+      if (messageData?.recentBlockhash) {
+        cachedBlockhash = Buffer.from(messageData.recentBlockhash).toString("base58");
+      }
 
       // Extract new tokens
       const postBalances = meta.postTokenBalances || [];

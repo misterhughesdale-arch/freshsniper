@@ -56,6 +56,7 @@ export interface BuyTransactionParams {
   slippageBps: number;
   priorityFeeLamports?: number;
   computeUnits?: number;
+  blockhash?: string; // Optional: pass blockhash from stream to avoid RPC call
 }
 
 export interface SellTransactionParams {
@@ -84,7 +85,7 @@ export interface BuildTransactionResult {
  * Creates associated token account if needed, then executes buy instruction.
  */
 export async function buildBuyTransaction(params: BuyTransactionParams): Promise<BuildTransactionResult> {
-  const { connection, buyer, mint, creator, amountSol, slippageBps, priorityFeeLamports = 10000, computeUnits = DEFAULT_COMPUTE_UNITS } = params;
+  const { connection, buyer, mint, creator, amountSol, slippageBps, priorityFeeLamports = 10000, computeUnits = DEFAULT_COMPUTE_UNITS, blockhash } = params;
 
   const transaction = new Transaction();
 
@@ -145,10 +146,14 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
 
   transaction.add(buyInstruction);
 
-  // Get recent blockhash
-  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("finalized");
-  transaction.recentBlockhash = blockhash;
-  transaction.lastValidBlockHeight = lastValidBlockHeight;
+  // Get recent blockhash (use cached if provided, otherwise fetch)
+  if (blockhash) {
+    transaction.recentBlockhash = blockhash;
+  } else {
+    const { blockhash: fetchedHash, lastValidBlockHeight } = await connection.getLatestBlockhash("finalized");
+    transaction.recentBlockhash = fetchedHash;
+    transaction.lastValidBlockHeight = lastValidBlockHeight;
+  }
   transaction.feePayer = buyer;
 
   return {
