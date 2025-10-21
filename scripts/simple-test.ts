@@ -84,7 +84,7 @@ async function reclaimRent() {
   
   try {
     const { Transaction, SystemProgram } = await import("@solana/web3.js");
-    const { createCloseAccountInstruction } = await import("@solana/spl-token");
+    const { createCloseAccountInstruction } = await import("@solana/spl-token/lib/cjs/index.js");
     
     const tokenAccounts = await connection.getParsedTokenAccountsByOwner(trader.publicKey, {
       programId: TOKEN_PROGRAM_ID,
