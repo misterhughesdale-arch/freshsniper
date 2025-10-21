@@ -127,7 +127,9 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
   transaction.add(createAtaInstruction);
 
   // Build buy instruction
-  const amountLamports = BigInt(Math.floor(amountSol * LAMPORTS_PER_SOL));
+  // Request large token amount (100k tokens = 100,000,000,000 with 6 decimals)
+  // The actual amount will be limited by maxSolCost
+  const tokenAmount = BigInt(100_000_000_000); // 100k tokens
   const maxSolCost = BigInt(Math.floor((amountSol * (1 + slippageBps / 10000)) * LAMPORTS_PER_SOL));
 
   const buyInstruction = createBuyInstruction({
@@ -140,8 +142,8 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
     globalVolumeAccumulator,
     userVolumeAccumulator,
     feeConfig,
-    amountLamports,
-    maxSolCost,
+    tokenAmount, // Request 100k tokens
+    maxSolCost, // Limit spend to actual SOL amount
   });
 
   transaction.add(buyInstruction);
@@ -257,19 +259,19 @@ function createBuyInstruction(params: {
   globalVolumeAccumulator: PublicKey;
   userVolumeAccumulator: PublicKey;
   feeConfig: PublicKey;
-  amountLamports: bigint;
+  tokenAmount: bigint; // FIXED: This should be token amount, not SOL amount
   maxSolCost: bigint;
 }): TransactionInstruction {
-  const { 
+  const {
     buyer, mint, bondingCurve, associatedBondingCurve, buyerTokenAccount,
     creatorVault, globalVolumeAccumulator, userVolumeAccumulator, feeConfig,
-    amountLamports, maxSolCost 
+    tokenAmount, maxSolCost 
   } = params;
 
-  // Instruction data: discriminator + amount + max_sol_cost + track_volume (Option<bool>)
+  // Instruction data: discriminator + token_amount + max_sol_cost + track_volume (Option<bool>)
   const data = Buffer.alloc(25);
   BUY_DISCRIMINATOR.copy(data, 0);
-  data.writeBigUInt64LE(amountLamports, 8);
+  data.writeBigUInt64LE(tokenAmount, 8); // FIXED: Use tokenAmount, not SOL lamports
   data.writeBigUInt64LE(maxSolCost, 16);
   data.writeUInt8(0, 24); // track_volume = None (0 = Option::None)
 
