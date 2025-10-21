@@ -58,12 +58,12 @@ Run in safe mode (no buying):
 pnpm dev:working
 ```
 
+/*
 You should see:
-```
 ✅ Stream connected
 🪙 TOKEN #1 DETECTED
    Mint: CdqR1y3i8bVr9YY42yDaMQyadM4V4bkZVwbqvnHWpump
-```
+*/
 
 If you see tokens being detected, the stream is working!
 
@@ -89,28 +89,31 @@ pnpm dev:full
 ```
 
 Watch for:
-```
+
 ✅ Sim OK: 67ms
 ✅ Sent via Jito: 5VERv8NMvz...
 🎉 CONFIRMED: ...
-```
 
 ## Troubleshooting
 
 ### "Cannot find module 'zod'"
+
 ```bash
 pnpm install -w zod
 ```
 
 ### "ENOENT: no such file or directory, open './keypairs/trader.json'"
+
 Create the keypairs directory and add your wallet JSON.
 
 ### Stream connects but no tokens detected
+
 - Verify `GRPC_URL` and `X_TOKEN` are correct
 - Check Shyft API quota hasn't been exceeded
 - Pump.fun may have slow periods
 
 ### Simulation fails
+
 - Check wallet has enough SOL
 - Verify slippage settings
 - Token may have low liquidity
@@ -119,7 +122,6 @@ Create the keypairs directory and add your wallet JSON.
 
 Rotate between these accounts for better distribution:
 
-```
 96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5
 HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe
 Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY
@@ -128,26 +130,27 @@ DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh
 ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt
 DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL
 3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT
-```
 
 Update `config/default.toml` with one of these.
 
 ## Performance Tuning
 
 ### For Speed
+
 - Set `priority_fee_lamports = 200000` (higher fee)
 - Use dedicated RPC endpoint (not public)
 - Reduce `buy_amount_sol` for faster execution
 
 ### For Cost Efficiency
+
 - Set `priority_fee_lamports = 50000` (lower fee)
 - May have slower transaction landing
 
 ## Next Steps
 
 Once basic operation is verified:
+
 1. Add filters (liquidity, creator whitelist)
 2. Implement automated selling
 3. Add position tracking
 4. Scale with multiple strategies
-

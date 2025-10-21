@@ -65,11 +65,11 @@ TRADER_KEYPAIR_PATH=./keypairs/trader.json
 
 ## 📊 What You'll See
 
-```
-🚀 WORKING MVP - Pump.fun Token Sniper
+## 🚀 WORKING MVP - Pump.fun Token Sniper
+
 ======================================
 
-🔗 RPC: https://rpc.shyft.to...
+🔗 RPC: <https://rpc.shyft.to>...
 📡 Geyser: grpc.ny.shyft.to:443
 🎯 Watching: 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P
 
@@ -83,11 +83,9 @@ TRADER_KEYPAIR_PATH=./keypairs/trader.json
    ✅ Sim OK: 67ms | Units: 145623
    ✅ Sent via Jito: 5VERv8NMvz... (89ms)
    📊 Total: 201ms
-```
 
 ## 📁 Project Structure
 
-```
 freshSniper/
 ├── packages/           # Shared libraries
 │   ├── config/        # TOML config loader with Zod validation
@@ -103,7 +101,6 @@ freshSniper/
 ├── config/
 │   └── default.toml     # Main configuration
 └── docs/              # Additional documentation
-```
 
 ## 🎮 Commands
 
@@ -112,7 +109,6 @@ pnpm dev:working   # Stream detection only (safe)
 pnpm dev:full      # Full sniper with Jito sending (⚠️ spends SOL!)
 pnpm build         # Build all packages
 pnpm clean         # Clean build artifacts
-```
 
 ## 🔒 Safety
 
@@ -144,6 +140,7 @@ Press Ctrl+C to see final stats.
 ## 🤝 Contributing
 
 Contributions welcome! Please ensure:
+
 - TypeScript strict mode compliance
 - Comprehensive error handling
 - Structured logging for all operations
