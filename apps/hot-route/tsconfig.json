@@ -1,9 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "../../dist/apps/hot-route"
+    "outDir": "../../dist/apps/hot-route",
+    "rootDir": "src"
   },
-  "include": ["src", "../../types/**/*.d.ts"],
+  "include": ["src/**/*"],
   "references": [
     { "path": "../../packages/config" },
     { "path": "../../packages/logging" },
