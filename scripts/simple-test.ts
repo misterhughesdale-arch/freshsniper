@@ -348,6 +348,11 @@ async function handleStream(client: Client) {
       const preBalances = meta.preTokenBalances || [];
       const preMints = new Set(preBalances.map((b: any) => b.mint).filter(Boolean));
 
+      // Debug: log every 50th transaction details
+      if (eventsReceived % 50 === 0) {
+        console.log(`   📝 Sample TX: post=${postBalances.length}, pre=${preBalances.length}`);
+      }
+
       // Get creator from first account key
       const accountKeys = txInfo.message?.accountKeys;
       if (!accountKeys || accountKeys.length === 0) return;
@@ -358,6 +363,10 @@ async function handleStream(client: Client) {
         .map((b: any) => b.mint);
 
       tokensFiltered += newTokens.length;
+      
+      if (newTokens.length > 0) {
+        console.log(`   🆕 NEW TOKEN FOUND! Mint: ${newTokens[0].slice(0, 16)}...`);
+      }
 
       for (const mint of newTokens) {
         buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
