@@ -18,6 +18,7 @@ import { readFileSync } from "fs";
 const GRPC_URL = process.env.GRPC_URL!;
 const X_TOKEN = process.env.X_TOKEN!;
 const RPC_URL = process.env.SOLANA_RPC_PRIMARY!;
+const JITO_URL = "https://ny.mainnet.block-engine.jito.wtf/api/v1/transactions";
 const TRADER_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
 const PUMPFUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
 
@@ -157,11 +158,26 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
     });
     
     transaction.sign(trader);
-    const signature = await connection.sendRawTransaction(transaction.serialize(), {
-      skipPreflight: true,
+    
+    // Send via Jito for fast inclusion
+    const jitoPayload = {
+      jsonrpc: "2.0",
+      id: 1,
+      method: "sendTransaction",
+      params: [transaction.serialize().toString("base64"), { encoding: "base64", skipPreflight: true }],
+    };
+    
+    const jitoRes = await fetch(JITO_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(jitoPayload),
     });
     
-    console.log(`   📤 Buy TX: ${signature}`);
+    const jitoData = await jitoRes.json();
+    if (jitoData.error) throw new Error(`Jito: ${jitoData.error.message}`);
+    
+    const signature = jitoData.result;
+    console.log(`   📤 Buy TX (Jito): ${signature}`);
     console.log(`   🔗 https://solscan.io/tx/${signature}`);
     
     const confirmation = await connection.confirmTransaction(signature, "confirmed");
