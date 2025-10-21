@@ -115,7 +115,7 @@ async function reclaimRent() {
 /**
  * Buy token
  */
-async function buyToken(mintStr: string, creatorStr: string, receivedAt: number) {
+async function buyToken(mintStr: string, receivedAt: number) {
   // Deduplication check - don't buy same token twice
   if (processedMints.has(mintStr)) {
     return;
@@ -144,13 +144,18 @@ async function buyToken(mintStr: string, creatorStr: string, receivedAt: number)
   }
   
   console.log(`\n🪙 Token #${tokensDetected}: ${mintStr.slice(0, 8)}... (age: ${tokenAge}ms, balance: ${balanceSOL.toFixed(4)} SOL)`);
-  console.log(`   Creator: ${creatorStr.slice(0, 8)}...`);
   
   try {
     const mint = new PublicKey(mintStr);
-    const creator = new PublicKey(creatorStr);
     buyAttempts++;
     lastBuyTime = now;
+    
+    // Fetch bonding curve state to get creator
+    const { fetchBondingCurveState } = await import("../packages/transactions/src/pumpfun/builders");
+    const curveState = await fetchBondingCurveState(connection, mint);
+    const creator = curveState.creator;
+    
+    console.log(`   Creator: ${creator.toBase58().slice(0, 8)}...`);
     
     const { transaction } = await buildBuyTransaction({
       connection,
@@ -355,7 +360,7 @@ async function handleStream(client: Client) {
       }
 
       // Process token (mint is already a string from meta)
-      buyToken(mint, creator, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
+      buyToken(mint, receivedAt).catch(e => console.error(`Buy failed: ${e.message}`));
 
     } catch (error) {
       // Silent like working example
