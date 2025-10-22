@@ -1,4 +1,4 @@
-import type { Connection, Keypair, Transaction } from "@solana/web3.js";
+import type { Commitment, Connection, Keypair, Transaction } from "@solana/web3.js";
 import type { FreshSniperConfig } from "@fresh-sniper/config";
 import { PublicKey } from "@solana/web3.js";
 import { buildBuyTransaction, buildSellTransaction, type BuildTransactionResult } from "./pumpfun/builders";
@@ -15,6 +15,8 @@ export interface BuyPayload {
   mint: string;
   amountSol?: number;
   slippageBps?: number;
+  blockhash?: string;
+  lastValidBlockHeight?: number;
 }
 
 export interface SellPayload {
@@ -60,6 +62,9 @@ export function buildBuyWorkflow(deps: WorkflowDeps): Workflow<BuyPayload> {
           amountSol,
           slippageBps,
           priorityFeeLamports: config.jito.priority_fee_lamports,
+          blockhash: payload.blockhash,
+          lastValidBlockHeight: payload.lastValidBlockHeight,
+          commitment: config.rpc.commitment as Commitment,
         });
         const buildTimeMs = Date.now() - buildStart;
         metrics.observeLatency("transaction_build_ms", buildTimeMs);
@@ -91,7 +96,16 @@ export function buildBuyWorkflow(deps: WorkflowDeps): Workflow<BuyPayload> {
         const totalTimeMs = Date.now() - startTime;
 
         metrics.incrementCounter("buy_transactions_built");
-        logger.info({ mint: payload.mint, buildTimeMs, simulateTimeMs, totalTimeMs }, "buy workflow completed");
+        logger.info(
+          {
+            mint: payload.mint,
+            buildTimeMs,
+            simulateTimeMs,
+            totalTimeMs,
+            blockhashSource: metadata.blockhashSource,
+          },
+          "buy workflow completed",
+        );
 
         return {
           success: true,
@@ -153,6 +167,7 @@ export function buildSellWorkflow(deps: WorkflowDeps): Workflow<SellPayload> {
           tokenAmount,
           slippageBps,
           priorityFeeLamports: config.jito.priority_fee_lamports,
+          commitment: config.rpc.commitment as Commitment,
         });
         const buildTimeMs = Date.now() - buildStart;
         metrics.observeLatency("transaction_build_ms", buildTimeMs);

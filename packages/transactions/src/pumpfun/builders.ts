@@ -14,6 +14,7 @@
  */
 
 import {
+  Commitment,
   ComputeBudgetProgram,
   Connection,
   Keypair,
@@ -57,6 +58,8 @@ export interface BuyTransactionParams {
   priorityFeeLamports?: number;
   computeUnits?: number;
   blockhash?: string; // Optional: pass blockhash from stream to avoid RPC call
+  lastValidBlockHeight?: number;
+  commitment?: Commitment;
 }
 
 export interface SellTransactionParams {
@@ -68,6 +71,9 @@ export interface SellTransactionParams {
   slippageBps: number;
   priorityFeeLamports?: number;
   computeUnits?: number;
+  blockhash?: string;
+  lastValidBlockHeight?: number;
+  commitment?: Commitment;
 }
 
 export interface BuildTransactionResult {
@@ -77,6 +83,9 @@ export interface BuildTransactionResult {
     amount: number;
     slippageBps: number;
     estimatedFee: number;
+    blockhash: string;
+    blockhashSource: "payload" | "rpc";
+    lastValidBlockHeight: number | null;
   };
 }
 
@@ -85,7 +94,19 @@ export interface BuildTransactionResult {
  * Creates associated token account if needed, then executes buy instruction.
  */
 export async function buildBuyTransaction(params: BuyTransactionParams): Promise<BuildTransactionResult> {
-  const { connection, buyer, mint, creator, amountSol, slippageBps, priorityFeeLamports = 10000, computeUnits = DEFAULT_COMPUTE_UNITS, blockhash } = params;
+  const {
+    connection,
+    buyer,
+    mint,
+    creator,
+    amountSol,
+    slippageBps,
+    priorityFeeLamports = 10000,
+    computeUnits = DEFAULT_COMPUTE_UNITS,
+    blockhash,
+    lastValidBlockHeight,
+    commitment = "processed",
+  } = params;
 
   const transaction = new Transaction();
 
@@ -149,12 +170,25 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
   transaction.add(buyInstruction);
 
   // Get recent blockhash (use cached if provided, otherwise fetch)
+  let effectiveBlockhash = blockhash ?? "";
+  let effectiveLastValidBlockHeight = lastValidBlockHeight ?? null;
+  const blockhashSource: "payload" | "rpc" = blockhash ? "payload" : "rpc";
+
   if (blockhash) {
     transaction.recentBlockhash = blockhash;
+    if (lastValidBlockHeight !== undefined) {
+      transaction.lastValidBlockHeight = lastValidBlockHeight;
+    }
   } else {
-    const { blockhash: fetchedHash, lastValidBlockHeight } = await connection.getLatestBlockhash("finalized");
+    const { blockhash: fetchedHash, lastValidBlockHeight: fetchedLastValidBlockHeight } = await connection.getLatestBlockhash(commitment);
     transaction.recentBlockhash = fetchedHash;
-    transaction.lastValidBlockHeight = lastValidBlockHeight;
+    transaction.lastValidBlockHeight = fetchedLastValidBlockHeight;
+    effectiveBlockhash = fetchedHash;
+    effectiveLastValidBlockHeight = fetchedLastValidBlockHeight ?? null;
+  }
+
+  if (!effectiveBlockhash) {
+    effectiveBlockhash = transaction.recentBlockhash ?? "";
   }
   transaction.feePayer = buyer;
 
@@ -165,6 +199,9 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
       amount: amountSol,
       slippageBps,
       estimatedFee: priorityFeeLamports / LAMPORTS_PER_SOL,
+      blockhash: effectiveBlockhash,
+      blockhashSource,
+      lastValidBlockHeight: effectiveLastValidBlockHeight,
     },
   };
 }
@@ -173,7 +210,19 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
  * Builds a Pump.fun sell transaction.
  */
 export async function buildSellTransaction(params: SellTransactionParams): Promise<BuildTransactionResult> {
-  const { connection, seller, mint, creator, tokenAmount, slippageBps, priorityFeeLamports = 10000, computeUnits = DEFAULT_COMPUTE_UNITS } = params;
+  const {
+    connection,
+    seller,
+    mint,
+    creator,
+    tokenAmount,
+    slippageBps,
+    priorityFeeLamports = 10000,
+    computeUnits = DEFAULT_COMPUTE_UNITS,
+    blockhash,
+    lastValidBlockHeight,
+    commitment = "processed",
+  } = params;
 
   const transaction = new Transaction();
 
@@ -220,9 +269,26 @@ export async function buildSellTransaction(params: SellTransactionParams): Promi
   transaction.add(sellInstruction);
 
   // Get recent blockhash
-  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("finalized");
-  transaction.recentBlockhash = blockhash;
-  transaction.lastValidBlockHeight = lastValidBlockHeight;
+  let effectiveBlockhash = blockhash ?? "";
+  let effectiveLastValidBlockHeight = lastValidBlockHeight ?? null;
+  const blockhashSource: "payload" | "rpc" = blockhash ? "payload" : "rpc";
+
+  if (blockhash) {
+    transaction.recentBlockhash = blockhash;
+    if (lastValidBlockHeight !== undefined) {
+      transaction.lastValidBlockHeight = lastValidBlockHeight;
+    }
+  } else {
+    const { blockhash: fetchedHash, lastValidBlockHeight: fetchedLastValidBlockHeight } = await connection.getLatestBlockhash(commitment);
+    transaction.recentBlockhash = fetchedHash;
+    transaction.lastValidBlockHeight = fetchedLastValidBlockHeight;
+    effectiveBlockhash = fetchedHash;
+    effectiveLastValidBlockHeight = fetchedLastValidBlockHeight ?? null;
+  }
+
+  if (!effectiveBlockhash) {
+    effectiveBlockhash = transaction.recentBlockhash ?? "";
+  }
   transaction.feePayer = seller;
 
   return {
@@ -232,6 +298,9 @@ export async function buildSellTransaction(params: SellTransactionParams): Promi
       amount: tokenAmount,
       slippageBps,
       estimatedFee: priorityFeeLamports / LAMPORTS_PER_SOL,
+      blockhash: effectiveBlockhash,
+      blockhashSource,
+      lastValidBlockHeight: effectiveLastValidBlockHeight,
     },
   };
 }
