@@ -27,16 +27,18 @@
 
 import "dotenv/config";
 import Client, { CommitmentLevel } from "@triton-one/yellowstone-grpc";
-import { 
-  Connection, 
-  Keypair, 
-  PublicKey, 
+import {
+  Connection,
+  Keypair,
+  PublicKey,
   Transaction,
   SystemProgram,
+  type Commitment,
 } from "@solana/web3.js";
 import { readFileSync } from "fs";
 import { loadConfig } from "../packages/config/src/index";
 import { buildBuyTransaction } from "../packages/transactions/src/pumpfun/builders";
+import { normalizeToBase58 } from "../packages/transactions/src/utils/base58";
 
 const PUMPFUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
 
@@ -140,7 +142,13 @@ function isCircuitBreakerActive(): boolean {
 /**
  * Process detected token
  */
-async function processToken(mint: string, owner: string, creator: string, receivedAt: number) {
+async function processToken(
+  mint: string,
+  owner: string,
+  creator: string,
+  receivedAt: number,
+  recentBlockhash: string | null,
+) {
   // Check circuit breaker
   if (isCircuitBreakerActive()) {
     console.log(`🚨 Circuit breaker active - skipping buy`);
@@ -157,7 +165,7 @@ async function processToken(mint: string, owner: string, creator: string, receiv
   try {
     // 1. BUILD TRANSACTION (NO RPC - INSTANT!)
     const buildStart = Date.now();
-    const { transaction } = await buildBuyTransaction({
+    const { transaction, metadata } = await buildBuyTransaction({
       connection,
       buyer: trader.publicKey,
       mint: mintPubkey,
@@ -165,8 +173,10 @@ async function processToken(mint: string, owner: string, creator: string, receiv
       amountSol: config.strategy.buy_amount_sol,
       slippageBps: config.strategy.max_slippage_bps,
       priorityFeeLamports: config.jito.priority_fee_lamports,
+      blockhash: recentBlockhash ?? undefined,
+      commitment: config.rpc.commitment as Commitment,
     });
-    
+
     // Add Jito tip
     const tipInstruction = SystemProgram.transfer({
       fromPubkey: trader.publicKey,
@@ -174,11 +184,13 @@ async function processToken(mint: string, owner: string, creator: string, receiv
       lamports: config.jito.priority_fee_lamports, // Use priority fee as tip
     });
     transaction.add(tipInstruction);
-    
+
     const buildTime = Date.now() - buildStart;
     metrics.txBuilt++;
-    console.log(`   ⚙️  Built: ${buildTime}ms | Tip: ${config.jito.priority_fee_lamports} lamports`);
-    
+    console.log(
+      `   ⚙️  Built: ${buildTime}ms | Tip: ${config.jito.priority_fee_lamports} lamports | Blockhash: ${metadata.blockhashSource}`,
+    );
+
     // 2. SIGN (skip simulation for max speed)
     transaction.sign(trader);
     
@@ -248,7 +260,12 @@ async function handleStream(client: Client, args: any) {
       const accountKeys = txInfo.message?.accountKeys;
       if (!accountKeys || accountKeys.length === 0) return;
       const creator = String(accountKeys[0]);
-      
+
+      const recentBlockhash = extractBlockhash(txInfo);
+      if (!recentBlockhash) {
+        console.log("   ⚠️  Missing blockhash in stream payload (will fall back to RPC)");
+      }
+
       // Extract new tokens
       const postBalances = meta.postTokenBalances || [];
       const preBalances = meta.preTokenBalances || [];
@@ -265,7 +282,7 @@ async function handleStream(client: Client, args: any) {
       
       // Process each token (async, don't block stream)
       for (const token of newTokens) {
-        processToken(token.mint, token.owner, creator, receivedAt).catch(e => 
+        processToken(token.mint, token.owner, creator, receivedAt, recentBlockhash).catch(e =>
           console.error(`Token processing failed: ${e.message}`)
         );
       }
@@ -281,6 +298,15 @@ async function handleStream(client: Client, args: any) {
   });
   
   await streamClosed;
+}
+
+function extractBlockhash(txInfo: any): string | null {
+  const message = txInfo.message ?? txInfo.transaction?.message;
+  if (!message) {
+    return null;
+  }
+
+  return normalizeToBase58(message.recentBlockhash ?? message.recent_blockhash);
 }
 
 /**

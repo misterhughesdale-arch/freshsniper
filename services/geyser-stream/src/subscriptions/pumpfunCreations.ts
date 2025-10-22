@@ -9,6 +9,7 @@ import YellowstoneClient, {
 import type { FreshSniperConfig } from "@fresh-sniper/config";
 import type { Logger } from "@fresh-sniper/logging";
 import type { MetricsClient } from "@fresh-sniper/metrics";
+import { normalizeToBase58 } from "@fresh-sniper/transactions";
 
 interface SubscribeDeps {
   config: FreshSniperConfig;
@@ -29,6 +30,17 @@ interface MintedTokenInfo {
   amountRaw: string;
   amountUi?: number;
   amountUiString?: string;
+}
+
+interface TokenCreatedEvent {
+  type: "TokenCreated";
+  signature: string | null;
+  slot: number | null;
+  filters: string[];
+  mintedTokens: MintedTokenInfo[];
+  receivedAt: number;
+  logMessages: string[];
+  recentBlockhash: string | null;
 }
 
 export async function subscribePumpfunCreations({
@@ -161,14 +173,21 @@ function processUpdate(
   const signature = normalizeSignature(txInfo.signature ?? update.transaction.signature);
   const slot = update.transaction.slot ?? null;
 
-  const payload = {
-    type: "TokenCreated" as const,
+  const recentBlockhash = extractRecentBlockhash(txInfo);
+
+  if (!recentBlockhash) {
+    metrics.incrementCounter("pumpfun_missing_blockhash");
+  }
+
+  const payload: TokenCreatedEvent = {
+    type: "TokenCreated",
     signature,
     slot,
     filters,
     mintedTokens,
     receivedAt: Date.now(),
     logMessages: meta.logMessages ?? [],
+    recentBlockhash,
   };
 
   metrics.incrementCounter("pumpfun_new_creation_events");
@@ -177,10 +196,14 @@ function processUpdate(
     signature: payload.signature,
     slot: payload.slot,
     mintedCount: mintedTokens.length,
+    blockhashPresent: Boolean(recentBlockhash),
   });
 
   eventBus.emit("pumpfun:tokenCreated", payload);
-  logger.debug({ signature: payload.signature, slot, mintedTokens }, "pumpfun token creation detected");
+  logger.debug(
+    { signature: payload.signature, slot, mintedTokens, recentBlockhash },
+    "pumpfun token creation detected",
+  );
 }
 
 function buildSubscribeRequest(config: FreshSniperConfig): SubscribeRequest {
@@ -282,81 +305,18 @@ function extractMintedTokens(meta: { preTokenBalances?: any[]; postTokenBalances
 }
 
 function normalizeSignature(signature: unknown): string | null {
-  if (!signature) {
+  return normalizeToBase58(signature);
+}
+
+function extractRecentBlockhash(txInfo: any): string | null {
+  const message = txInfo.message ?? txInfo.transaction?.message;
+  if (!message) {
     return null;
   }
 
-  if (typeof signature === "string") {
-    // Try base64 decode first; fallback to raw string if not base64.
-    const decoded = safeBase64Decode(signature);
-    if (decoded) {
-      return encodeBase58(decoded);
-    }
-    return signature;
-  }
-
-  if (signature instanceof Uint8Array) {
-    return encodeBase58(signature);
-  }
-
-  if (Array.isArray(signature)) {
-    return encodeBase58(Uint8Array.from(signature as number[]));
-  }
-
-  return null;
-}
-
-function safeBase64Decode(value: string): Uint8Array | null {
-  try {
-    const buffer = Buffer.from(value, "base64");
-    if (buffer.length === 0) {
-      return null;
-    }
-    return buffer;
-  } catch (error) {
-    return null;
-  }
-}
-
-function encodeBase58(bytes: Uint8Array): string {
-  if (bytes.length === 0) {
-    return "";
-  }
-
-  const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-  const digits = [0];
-
-  for (const byte of bytes) {
-    let carry = byte;
-    for (let j = 0; j < digits.length; j += 1) {
-      carry += digits[j] << 8;
-      digits[j] = carry % 58;
-      carry = Math.floor(carry / 58);
-    }
-
-    while (carry > 0) {
-      digits.push(carry % 58);
-      carry = Math.floor(carry / 58);
-    }
-  }
-
-  let leadingZeroCount = 0;
-  for (const byte of bytes) {
-    if (byte === 0) {
-      leadingZeroCount += 1;
-    } else {
-      break;
-    }
-  }
-
-  let result = "";
-  for (let i = 0; i < leadingZeroCount; i += 1) {
-    result += "1";
-  }
-  for (let i = digits.length - 1; i >= 0; i -= 1) {
-    result += alphabet[digits[i]];
-  }
-  return result;
+  // protobufjs may expose either camelCase or snake_case depending on
+  // the runtime representation, so check both.
+  return normalizeToBase58(message.recentBlockhash ?? message.recent_blockhash);
 }
 
 async function writeSubscribeRequest(stream: YellowstoneStream, request: SubscribeRequest): Promise<void> {
